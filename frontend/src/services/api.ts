@@ -34,13 +34,36 @@ import {
 const rawBase = import.meta.env.VITE_API_BASE_URL || '';
 const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
 
+let currentAuthToken: string | null = typeof window !== 'undefined'
+  ? localStorage.getItem('nextrade_auth_token')
+  : null;
+
+export const setAuthToken = (token: string | null) => {
+  currentAuthToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('nextrade_auth_token', token);
+    } else {
+      localStorage.removeItem('nextrade_auth_token');
+    }
+  }
+};
+
+export const getAuthToken = () => currentAuthToken;
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  };
+
+  if (currentAuthToken) {
+    headers['Authorization'] = `Bearer ${currentAuthToken}`;
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
   if (!res.ok) {
     let errorMsg = `HTTP Error ${res.status}`;
@@ -509,4 +532,56 @@ export const api = {
     fetchJson<{ status: string; underlying: string; dates: string[] }>(
       `/market-data/pcr/dates?underlying=${encodeURIComponent(underlying)}`
     ),
+
+  // Authentication & Access Control (Strict 2-User Private Allowlist)
+  authLogin: (data: { email: string; password: string }) =>
+    fetchJson<{ access_token: string; token_type: string; user: any }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  authSignup: (data: { email: string; password: string; username?: string }) =>
+    fetchJson<{ access_token: string; token_type: string; user: any }>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  authLogout: () =>
+    fetchJson<{ status: string; message: string }>('/auth/logout', {
+      method: 'POST',
+    }),
+
+  authGetMe: () =>
+    fetchJson<{ user: { id: number; email: string; username: string; role: string } }>('/auth/me'),
+
+  authForgotPassword: (data: { email: string }) =>
+    fetchJson<{ status: string; message: string; reset_token?: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  authResetPassword: (data: { email: string; reset_token: string; new_password: string }) =>
+    fetchJson<{ status: string; message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  authGetAuthorizedUsers: () =>
+    fetchJson<{
+      max_slots: number;
+      slots_used: number;
+      slots_available: number;
+      users: Array<{ id: number; email: string; role: string; is_active: boolean; invited_by?: string; created_at?: string }>;
+    }>('/auth/authorized-users'),
+
+  authAddAuthorizedUser: (data: { email: string; role?: string }) =>
+    fetchJson<any>('/auth/authorized-users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  authRemoveAuthorizedUser: (email: string) =>
+    fetchJson<{ status: string; message: string }>(`/auth/authorized-users/${encodeURIComponent(email)}`, {
+      method: 'DELETE',
+    }),
 };

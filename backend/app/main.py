@@ -15,6 +15,7 @@ from backend.app.api.routes_analytics import router as analytics_router
 from backend.app.api.routes_ws import router as ws_router
 from backend.app.api.routes_ai_micro_scalper import router as ai_micro_scalper_router
 from backend.app.api.routes_pcr import router as pcr_router, router_alias as pcr_alias_router
+from backend.app.api.routes_auth import router as auth_router
 
 # Configure logging
 logging.basicConfig(
@@ -65,6 +66,7 @@ app.include_router(ws_router)
 app.include_router(ai_micro_scalper_router)
 app.include_router(pcr_router)
 app.include_router(pcr_alias_router)
+app.include_router(auth_router)
 
 
 @app.get("/api/health")

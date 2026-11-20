@@ -21,6 +21,22 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(100), unique=True, nullable=True)
+    password_hash = Column(String(255), nullable=True)
+    password_salt = Column(String(64), nullable=True)
+    role = Column(String(20), default="trader", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class AuthorizedUser(Base):
+    __tablename__ = "authorized_users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(150), unique=True, nullable=False, index=True)
+    role = Column(String(20), default="trader", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    invited_by = Column(String(150), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 

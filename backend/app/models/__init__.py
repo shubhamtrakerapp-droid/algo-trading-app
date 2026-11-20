@@ -1,5 +1,6 @@
 from backend.app.models.models import (
     User,
+    AuthorizedUser,
     BrokerConnection,
     Instrument,
     MarketTick,
@@ -37,6 +38,7 @@ from backend.app.models.models import (
 
 __all__ = [
     "User",
+    "AuthorizedUser",
     "BrokerConnection",
     "Instrument",
     "MarketTick",

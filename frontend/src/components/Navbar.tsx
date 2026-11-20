@@ -8,11 +8,19 @@ import {
   Menu,
   Activity,
   AlertTriangle,
+  LogOut,
+  Users,
+  Shield,
+  X,
+  Plus,
+  Trash2,
+  CheckCircle2,
 } from 'lucide-react';
 import { MarketStatus, StrategyType } from '../types';
 import { formatCurrency, formatIST } from '../utils/formatters';
 import { api } from '../services/api';
 import { wsClient, ConnectionState } from '../services/websocket';
+import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   marketStatus: MarketStatus | null;
@@ -20,12 +28,73 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSidebar }) => {
+  const { user, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState<string>(formatIST(new Date()));
   const [activeStrategy, setActiveStrategy] = useState<StrategyType>('AI_MICRO_SCALPER_V1');
   const [connectionState, setConnectionState] = useState<ConnectionState>('CONNECTING');
   const [lastTickTime, setLastTickTime] = useState<Date | null>(null);
   const [dataAgeStr, setDataAgeStr] = useState<string>('Live');
   const [subsCount, setSubsCount] = useState<number>(2);
+
+  // 2-User Slot Management Modal State
+  const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
+  const [slotsData, setSlotsData] = useState<{
+    max_slots: number;
+    slots_used: number;
+    slots_available: number;
+    users: Array<{ id: number; email: string; role: string; is_active: boolean; invited_by?: string; created_at?: string }>;
+  } | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('trader');
+  const [slotMsg, setSlotMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [isSlotLoading, setIsSlotLoading] = useState(false);
+
+  const fetchSlots = async () => {
+    try {
+      const data = await api.authGetAuthorizedUsers();
+      setSlotsData(data);
+    } catch (err: any) {
+      console.warn('Could not fetch authorized users:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isSlotModalOpen) {
+      fetchSlots();
+    }
+  }, [isSlotModalOpen]);
+
+  const handleAddUserSlot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail) return;
+    setIsSlotLoading(true);
+    setSlotMsg(null);
+    try {
+      await api.authAddAuthorizedUser({ email: inviteEmail.trim().toLowerCase(), role: inviteRole });
+      setSlotMsg({ text: `Successfully authorized ${inviteEmail}!`, type: 'success' });
+      setInviteEmail('');
+      await fetchSlots();
+    } catch (err: any) {
+      setSlotMsg({ text: err?.message || 'Failed to add user slot.', type: 'error' });
+    } finally {
+      setIsSlotLoading(false);
+    }
+  };
+
+  const handleRemoveUserSlot = async (emailToRemove: string) => {
+    if (!confirm(`Are you sure you want to remove authorized user ${emailToRemove}?`)) return;
+    setIsSlotLoading(true);
+    setSlotMsg(null);
+    try {
+      await api.authRemoveAuthorizedUser(emailToRemove);
+      setSlotMsg({ text: `Removed ${emailToRemove}`, type: 'success' });
+      await fetchSlots();
+    } catch (err: any) {
+      setSlotMsg({ text: err?.message || 'Failed to remove user slot.', type: 'error' });
+    } finally {
+      setIsSlotLoading(false);
+    }
+  };
 
   // Price flash indicators
   const [spotPrice, setSpotPrice] = useState<number>(marketStatus?.nifty_price || 24500.0);
@@ -309,8 +378,169 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
 
           {/* Connection & Data Health Monitor Badge */}
           {renderHealthBadge()}
+
+          {/* User Auth Profile & Controls */}
+          {user && (
+            <div className="flex items-center space-x-2 pl-1 border-l border-border/60">
+              {/* User Identity Pill */}
+              <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="font-medium truncate max-w-[120px]">{user.username || user.email.split('@')[0]}</span>
+                <span className="text-[10px] uppercase font-mono tracking-wider px-1 py-0.2 bg-emerald-950/70 border border-emerald-800/60 text-emerald-400 rounded">
+                  {user.role}
+                </span>
+              </div>
+
+              {/* Slot Management Button */}
+              <button
+                type="button"
+                onClick={() => setIsSlotModalOpen(true)}
+                title="Manage 2 Authorized User Accounts"
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-colors"
+              >
+                <Users className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden xl:inline">Access</span>
+              </button>
+
+              {/* Logout Button */}
+              <button
+                type="button"
+                onClick={logout}
+                title="Sign out of NEXTRADE"
+                className="p-1.5 rounded bg-slate-900 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* 2-User Slot Management Modal */}
+      {isSlotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-left">
+            <button
+              onClick={() => {
+                setIsSlotModalOpen(false);
+                setSlotMsg(null);
+              }}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-200"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-base font-bold text-white">Private Access (2 Slots)</h2>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">
+              NEXTRADE is restricted to 2 authorized operator accounts. Both accounts access the shared trading workspace and risk engine.
+            </p>
+
+            {slotMsg && (
+              <div
+                className={`mb-4 p-2.5 rounded-lg text-xs flex items-center gap-2 ${
+                  slotMsg.type === 'success'
+                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+                }`}
+              >
+                {slotMsg.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                )}
+                <span>{slotMsg.text}</span>
+              </div>
+            )}
+
+            {/* Slots Occupancy */}
+            <div className="space-y-2 mb-5">
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-300">
+                <span>Authorized Accounts</span>
+                <span className="text-indigo-400 font-mono">
+                  {slotsData ? `${slotsData.slots_used} / ${slotsData.max_slots} slots` : '2 slots'}
+                </span>
+              </div>
+
+              {slotsData?.users && slotsData.users.length > 0 ? (
+                <div className="space-y-2">
+                  {slotsData.users.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-800"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="text-xs font-semibold text-slate-200 truncate">{u.email}</div>
+                        <div className="text-[10px] text-slate-500 flex items-center gap-2">
+                          <span className="uppercase text-emerald-400 font-mono">{u.role}</span>
+                          <span>•</span>
+                          <span>{u.is_active ? 'Active' : 'Disabled'}</span>
+                        </div>
+                      </div>
+                      {u.role !== 'owner' && (
+                        <button
+                          onClick={() => handleRemoveUserSlot(u.email)}
+                          disabled={isSlotLoading}
+                          title="Remove user authorization"
+                          className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500 italic p-3 bg-slate-950 rounded-lg">
+                  Loading slots...
+                </div>
+              )}
+            </div>
+
+            {/* Invite Form if slots available */}
+            {slotsData && slotsData.slots_available > 0 ? (
+              <form onSubmit={handleAddUserSlot} className="pt-3 border-t border-slate-800 space-y-3">
+                <div className="text-xs font-semibold text-slate-300">
+                  Authorize User 2 ({slotsData.slots_available} slot available)
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="second.trader@nextrade.com"
+                    required
+                    className="flex-1 px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                  />
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value)}
+                    className="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200"
+                  >
+                    <option value="trader">Trader</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={isSlotLoading}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>All 2 private user slots are allocated.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 };

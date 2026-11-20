@@ -47,6 +47,12 @@ async def init_db():
         if "sqlite" in settings.database_url:
             def migrate_sqlite(sync_conn):
                 tables_columns = {
+                    "users": [
+                        ("password_hash", "VARCHAR(255)"),
+                        ("password_salt", "VARCHAR(64)"),
+                        ("role", "VARCHAR(20) DEFAULT 'trader'"),
+                        ("is_active", "BOOLEAN DEFAULT 1"),
+                    ],
                     "backtest_trades": [
                         ("configured_sl_points", "FLOAT DEFAULT 2.0"),
                         ("configured_target_points", "FLOAT DEFAULT 4.0"),

@@ -25,6 +25,24 @@ class Settings(BaseSettings):
     supabase_url: str = Field(default="", alias="SUPABASE_URL")
     supabase_service_role_key: str = Field(default="", alias="SUPABASE_SERVICE_ROLE_KEY")
     supabase_anon_key: str = Field(default="", alias="SUPABASE_ANON_KEY")
+    supabase_jwt_secret: str = Field(default="", alias="SUPABASE_JWT_SECRET")
+
+    # Authentication & Access Control (Strict 2-User Private Allowlist)
+    auth_enabled: bool = Field(default=True, alias="AUTH_ENABLED")
+    authorized_emails: str = Field(
+        default="admin@nextrade.com,trader@nextrade.com",
+        alias="AUTHORIZED_EMAILS"
+    )
+    jwt_secret_key: str = Field(
+        default="nextrade_production_secure_jwt_secret_2026_secured",
+        alias="JWT_SECRET_KEY"
+    )
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_access_token_expire_minutes: int = Field(default=1440, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES")  # 24 Hours
+
+    @property
+    def authorized_email_list(self) -> List[str]:
+        return [e.strip().lower() for e in self.authorized_emails.split(",") if e.strip()]
 
     # Database
     database_url: str = Field(default="sqlite+aiosqlite:///./nextrade.db", alias="DATABASE_URL")
