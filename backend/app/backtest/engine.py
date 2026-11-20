@@ -9,7 +9,14 @@ from backend.app.strategy.ut_bot import UTBotStrategy, UTBotEvaluation
 from backend.app.strategy.supertrend_ema import SupertrendEMAStrategy, SupertrendEMAEvaluation
 from backend.app.paper.charges import ChargesCalculator
 from backend.app.database import AsyncSessionLocal
-from backend.app.models import BacktestRun, BacktestTrade
+from backend.app.models import (
+    BacktestRun,
+    BacktestTrade,
+    BacktestDailyResult,
+    BacktestMetric,
+    BacktestDataCoverage,
+    BacktestExecutionLog,
+)
 from backend.app.analytics.calendar import parse_trade_datetime_ist
 
 logger = logging.getLogger("nextrade.backtest")
@@ -1147,6 +1154,93 @@ class BacktestEngine:
                     is_win=t["is_win"]
                 )
                 session.add(bt_trade)
+
+            # Persist daily results breakdown
+            daily_agg: Dict[str, Dict[str, Any]] = {}
+            for t in results["trades"]:
+                e_time = t["entry_time"]
+                date_str = e_time.strftime("%Y-%m-%d") if hasattr(e_time, "strftime") else str(e_time)[:10]
+                if date_str not in daily_agg:
+                    daily_agg[date_str] = {
+                        "trades": 0, "wins": 0, "losses": 0, "gross": 0.0, "charges": 0.0, "net": 0.0
+                    }
+                daily_agg[date_str]["trades"] += 1
+                if t["is_win"]:
+                    daily_agg[date_str]["wins"] += 1
+                else:
+                    daily_agg[date_str]["losses"] += 1
+                daily_agg[date_str]["gross"] += float(t["gross_pnl"])
+                daily_agg[date_str]["charges"] += float(t["charges"])
+                daily_agg[date_str]["net"] += float(t["net_pnl"])
+
+            for d_str, d_val in daily_agg.items():
+                daily_res = BacktestDailyResult(
+                    run_id=run_db.id,
+                    trading_date=d_str,
+                    trades_count=d_val["trades"],
+                    wins_count=d_val["wins"],
+                    losses_count=d_val["losses"],
+                    gross_pnl=round(d_val["gross"], 2),
+                    charges=round(d_val["charges"], 2),
+                    net_pnl=round(d_val["net"], 2)
+                )
+                session.add(daily_res)
+
+            # Persist key metrics
+            metrics_to_save = [
+                ("win_rate", float(results["win_rate"]), "RETURN", "Percentage of winning trades"),
+                ("profit_factor", float(results["profit_factor"]), "RETURN", "Gross profit divided by gross loss"),
+                ("max_drawdown", float(results["max_drawdown"]), "RISK", "Maximum peak to trough drawdown in ₹"),
+                ("net_profit", float(results["net_profit"]), "RETURN", "Total realized net profit in ₹"),
+                ("gross_profit", float(results["gross_profit"]), "RETURN", "Total gross profit in ₹"),
+                ("gross_loss", float(results["gross_loss"]), "RISK", "Total gross loss in ₹"),
+                ("avg_profit", float(results["avg_profit"]), "EXECUTION", "Average profit on winning trades"),
+                ("avg_loss", float(results["avg_loss"]), "EXECUTION", "Average loss on losing trades"),
+                ("largest_win", float(results["largest_win"]), "RETURN", "Largest single winning trade in ₹"),
+                ("largest_loss", float(results["largest_loss"]), "RISK", "Largest single losing trade in ₹"),
+                ("total_trades", float(results["total_trades"]), "EXECUTION", "Total number of completed trades")
+            ]
+            for m_key, m_val, m_cat, m_desc in metrics_to_save:
+                session.add(BacktestMetric(
+                    run_id=run_db.id,
+                    metric_key=m_key,
+                    metric_value=m_val,
+                    category=m_cat,
+                    description=m_desc
+                ))
+
+            # Persist data coverage record
+            start_ts = datetime.now(timezone.utc)
+            end_ts = datetime.now(timezone.utc)
+            try:
+                if results.get("start_date"):
+                    start_ts = parse_trade_datetime_ist(results["start_date"])
+                if results.get("end_date"):
+                    end_ts = parse_trade_datetime_ist(results["end_date"])
+            except Exception:
+                pass
+
+            cov_record = BacktestDataCoverage(
+                run_id=run_db.id,
+                instrument_token=str(results.get("signal_instrument", results.get("contract_symbol", "NIFTY"))),
+                trading_symbol=str(results.get("contract_symbol", results.get("instrument", "NIFTY ATM CE"))),
+                timeframe=str(results.get("timeframe", "1m")),
+                start_time=start_ts,
+                end_time=end_ts,
+                total_candles=len(results.get("trades", [])),
+                missing_candles=0,
+                coverage_pct=100.00
+            )
+            session.add(cov_record)
+
+            # Persist execution log
+            log_record = BacktestExecutionLog(
+                run_id=run_db.id,
+                level="INFO",
+                message=f"Backtest run #{run_db.id} ({results['strategy_name']}) persisted with {results['total_trades']} trades. Net P&L: ₹{results['net_profit']:.2f}",
+                stage="COMPLETION"
+            )
+            session.add(log_record)
 
             await session.commit()
             return run_db.id

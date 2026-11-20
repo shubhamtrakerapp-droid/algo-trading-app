@@ -16,7 +16,16 @@ from backend.app.strategy.ut_bot import UTBotEvaluation
 from backend.app.strategy.supertrend_ema import SupertrendEMAEvaluation
 from backend.app.paper.broker import PaperBroker
 from backend.app.database import AsyncSessionLocal
-from backend.app.models import StrategySignal, SystemEvent, BrokerConnection, MarketTick, HistoricalCandle
+from backend.app.models import (
+    StrategySignal,
+    SystemEvent,
+    BrokerConnection,
+    MarketTick,
+    HistoricalCandle,
+    StrategySignalEvaluation,
+    AgentDecision,
+    StrategyExecutionEvent,
+)
 
 logger = logging.getLogger("nextrade.coordinator")
 
@@ -685,6 +694,54 @@ class SystemCoordinator:
                     notes=eval_res.action_reason
                 )
                 session.add(sig)
+                await session.flush()
+
+                # Granular persistence: signal evaluations & agent decision
+                eval_1 = StrategySignalEvaluation(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    timestamp=eval_res.timestamp,
+                    rule_name="Price Above Trailing Stop",
+                    passed=bool(eval_res.above),
+                    expected_condition="Source price > Trailing stop",
+                    actual_value=f"Price: {eval_res.src_price}, Stop: {eval_res.trailing_stop}"
+                )
+                session.add(eval_1)
+
+                eval_2 = StrategySignalEvaluation(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    timestamp=eval_res.timestamp,
+                    rule_name="Session Time Valid",
+                    passed=bool(eval_res.session_valid),
+                    expected_condition="09:20 - 15:15 IST",
+                    actual_value=f"Session valid: {eval_res.session_valid}"
+                )
+                session.add(eval_2)
+
+                decision = AgentDecision(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    agent_name="UTBotTrendAgent",
+                    vote="BUY" if eval_res.is_buy else "SELL" if eval_res.is_sell else "HOLD",
+                    confidence=1.0 if (eval_res.is_buy or eval_res.is_sell) else 0.5,
+                    reasoning=eval_res.action_reason or f"Signal: {eval_res.signal}",
+                    timestamp=eval_res.timestamp
+                )
+                session.add(decision)
+
+                strat_evt = StrategyExecutionEvent(
+                    strategy_id="UT_BOT",
+                    event_type="SIGNAL_EXECUTED" if sig.executed else "SIGNAL_EVALUATED",
+                    details_json=json.dumps({
+                        "signal_id": sig.id,
+                        "signal_type": sig.signal_type,
+                        "executed": sig.executed,
+                        "price": eval_res.src_price
+                    }),
+                    created_at=eval_res.timestamp
+                )
+                session.add(strat_evt)
                 await session.commit()
         except Exception as e:
             logger.error(f"Error saving UT Bot signal to DB: {e}")
@@ -711,6 +768,54 @@ class SystemCoordinator:
                     executed=eval_res.is_buy
                 )
                 session.add(sig)
+                await session.flush()
+
+                # Granular persistence: signal evaluations & agent decision
+                eval_1 = StrategySignalEvaluation(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    timestamp=eval_res.timestamp,
+                    rule_name="Price Above Trailing Stop",
+                    passed=bool(eval_res.above),
+                    expected_condition="Source price > Trailing stop",
+                    actual_value=f"Price: {eval_res.src_price}, Stop: {eval_res.trailing_stop}"
+                )
+                session.add(eval_1)
+
+                eval_2 = StrategySignalEvaluation(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    timestamp=eval_res.timestamp,
+                    rule_name="Session Time Valid",
+                    passed=bool(eval_res.session_valid),
+                    expected_condition="09:20 - 15:15 IST",
+                    actual_value=f"Session valid: {eval_res.session_valid}"
+                )
+                session.add(eval_2)
+
+                decision = AgentDecision(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    agent_name="UTBotTrendAgent",
+                    vote="BUY" if eval_res.is_buy else "SELL" if eval_res.is_sell else "HOLD",
+                    confidence=1.0 if (eval_res.is_buy or eval_res.is_sell) else 0.5,
+                    reasoning=eval_res.action_reason or f"Signal: {eval_res.signal}",
+                    timestamp=eval_res.timestamp
+                )
+                session.add(decision)
+
+                strat_evt = StrategyExecutionEvent(
+                    strategy_id="UT_BOT",
+                    event_type="SIGNAL_EXECUTED" if sig.executed else "SIGNAL_EVALUATED",
+                    details_json=json.dumps({
+                        "signal_id": sig.id,
+                        "signal_type": sig.signal_type,
+                        "executed": sig.executed,
+                        "price": eval_res.src_price
+                    }),
+                    created_at=eval_res.timestamp
+                )
+                session.add(strat_evt)
                 await session.commit()
         except Exception as e:
             logger.error(f"Error saving EMA signal to DB: {e}")
@@ -738,6 +843,54 @@ class SystemCoordinator:
                     notes=eval_res.action_reason
                 )
                 session.add(sig)
+                await session.flush()
+
+                # Granular persistence: signal evaluations & agent decision
+                eval_1 = StrategySignalEvaluation(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    timestamp=eval_res.timestamp,
+                    rule_name="Price Above Trailing Stop",
+                    passed=bool(eval_res.above),
+                    expected_condition="Source price > Trailing stop",
+                    actual_value=f"Price: {eval_res.src_price}, Stop: {eval_res.trailing_stop}"
+                )
+                session.add(eval_1)
+
+                eval_2 = StrategySignalEvaluation(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    timestamp=eval_res.timestamp,
+                    rule_name="Session Time Valid",
+                    passed=bool(eval_res.session_valid),
+                    expected_condition="09:20 - 15:15 IST",
+                    actual_value=f"Session valid: {eval_res.session_valid}"
+                )
+                session.add(eval_2)
+
+                decision = AgentDecision(
+                    signal_id=sig.id,
+                    strategy_id="UT_BOT",
+                    agent_name="UTBotTrendAgent",
+                    vote="BUY" if eval_res.is_buy else "SELL" if eval_res.is_sell else "HOLD",
+                    confidence=1.0 if (eval_res.is_buy or eval_res.is_sell) else 0.5,
+                    reasoning=eval_res.action_reason or f"Signal: {eval_res.signal}",
+                    timestamp=eval_res.timestamp
+                )
+                session.add(decision)
+
+                strat_evt = StrategyExecutionEvent(
+                    strategy_id="UT_BOT",
+                    event_type="SIGNAL_EXECUTED" if sig.executed else "SIGNAL_EVALUATED",
+                    details_json=json.dumps({
+                        "signal_id": sig.id,
+                        "signal_type": sig.signal_type,
+                        "executed": sig.executed,
+                        "price": eval_res.src_price
+                    }),
+                    created_at=eval_res.timestamp
+                )
+                session.add(strat_evt)
                 await session.commit()
         except Exception as e:
             logger.error(f"Error saving Supertrend EMA signal to DB: {e}")

@@ -7,13 +7,34 @@ from typing import Dict, Any, List, Optional
 
 from backend.app.coordinator import coordinator
 from backend.app.database import AsyncSessionLocal
-from backend.app.models import StrategySignal
+from backend.app.models import StrategySignal, StrategyConfigVersion
 from backend.app.strategy.engine import StrategyEvaluationResult
 from backend.app.strategy.ut_bot import UTBotEvaluation
 from backend.app.strategy.supertrend_ema import SupertrendEMAEvaluation
 
 logger = logging.getLogger("nextrade.api.strategy")
 router = APIRouter(prefix="/api/strategy", tags=["Strategy"])
+
+
+async def _record_config_version(strategy_id: str, config: dict, summary: str = "Configuration updated"):
+    try:
+        async with AsyncSessionLocal() as session:
+            stmt = select(StrategyConfigVersion.version).where(
+                StrategyConfigVersion.strategy_id == strategy_id
+            ).order_by(desc(StrategyConfigVersion.version)).limit(1)
+            res = await session.execute(stmt)
+            latest_v = res.scalar_one_or_none() or 0
+            ver = StrategyConfigVersion(
+                strategy_id=strategy_id,
+                version=latest_v + 1,
+                config_json=json.dumps(config, default=str),
+                change_summary=summary,
+                changed_by="user"
+            )
+            session.add(ver)
+            await session.commit()
+    except Exception as e:
+        logger.error(f"Error persisting strategy config version: {e}")
 
 
 @router.get("/settings")
@@ -85,6 +106,7 @@ async def configure_strategy(payload: Dict[str, Any] = Body(...)):
         if "signal_source" in payload:
             ut.signal_source = str(payload["signal_source"])
 
+        await _record_config_version("UT_BOT", ut.get_config_dict())
         return {"status": "UPDATED", "strategy_id": "UT_BOT", "config": ut.get_config_dict()}
 
     elif strat_id in ("SUPERTREND_EMA", "SUPERTREND_EMA_SCALPER"):
@@ -111,6 +133,7 @@ async def configure_strategy(payload: Dict[str, Any] = Body(...)):
             st.daily_profit_target = float(payload["daily_profit_target"])
         if "daily_loss_limit" in payload:
             st.daily_loss_limit = float(payload["daily_loss_limit"])
+        await _record_config_version("SUPERTREND_EMA", st.get_config_dict())
         return {"status": "UPDATED", "strategy_id": "SUPERTREND_EMA", "config": st.get_config_dict()}
 
     elif strat_id == "EMA_RSI":
@@ -122,6 +145,7 @@ async def configure_strategy(payload: Dict[str, Any] = Body(...)):
             ema.target_points = float(payload["target_points"])
         if "stop_points" in payload:
             ema.stop_points = float(payload["stop_points"])
+        await _record_config_version("EMA_RSI", ema.get_config_dict())
         return {"status": "UPDATED", "strategy_id": "EMA_RSI", "config": ema.get_config_dict()}
 
     raise HTTPException(status_code=400, detail="Unknown strategy_id")

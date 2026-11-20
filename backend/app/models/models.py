@@ -1,9 +1,14 @@
+import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, Index, UniqueConstraint, BigInteger
 )
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
+
+
+def generate_uuid():
+    return str(uuid.uuid4())
 
 
 def utc_now():
@@ -435,6 +440,220 @@ class StrategyVirtualAccount(Base):
     risk_limits_enabled = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class PaperAccount(Base):
+    __tablename__ = "paper_accounts"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid, index=True)
+    user_id = Column(Integer, nullable=True)
+    strategy_id = Column(String(50), unique=True, nullable=False, index=True)
+    account_name = Column(String(100), nullable=False)
+    account_number = Column(String(50), unique=True, nullable=False)
+    initial_capital = Column(Float, default=100000.0, nullable=False)
+    available_balance = Column(Float, default=100000.0, nullable=False)
+    reserved_capital = Column(Float, default=0.0, nullable=False)
+    realized_pnl = Column(Float, default=0.0, nullable=False)
+    unrealized_pnl = Column(Float, default=0.0, nullable=False)
+    total_charges = Column(Float, default=0.0, nullable=False)
+    total_slippage = Column(Float, default=0.0, nullable=False)
+    capital_deployment_cap_pct = Column(Float, default=90.0, nullable=False)
+    currency = Column(String(10), default="INR", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class PaperAccountBalance(Base):
+    __tablename__ = "paper_account_balances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(String(36), ForeignKey("paper_accounts.id", ondelete="CASCADE"), nullable=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    balance = Column(Float, nullable=False)
+    available_balance = Column(Float, nullable=False)
+    reserved_margin = Column(Float, default=0.0, nullable=False)
+    realized_pnl = Column(Float, default=0.0, nullable=False)
+    unrealized_pnl = Column(Float, default=0.0, nullable=False)
+    change_amount = Column(Float, default=0.0, nullable=False)
+    change_reason = Column(String(100), nullable=False)
+    related_trade_id = Column(Integer, nullable=True)
+    related_order_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
+
+
+class PaperTradeEvent(Base):
+    __tablename__ = "paper_trade_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trade_id = Column(Integer, ForeignKey("paper_trades.id", ondelete="CASCADE"), nullable=False, index=True)
+    position_id = Column(Integer, nullable=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False)
+    event_price = Column(Float, nullable=False)
+    event_quantity = Column(Integer, nullable=False)
+    trigger_reason = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
+
+
+class PaperExecutionLog(Base):
+    __tablename__ = "paper_execution_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    order_id = Column(Integer, ForeignKey("paper_orders.id", ondelete="SET NULL"), nullable=True, index=True)
+    position_id = Column(Integer, nullable=True)
+    action = Column(String(50), nullable=False)
+    level = Column(String(20), default="INFO", nullable=False)
+    message = Column(Text, nullable=False)
+    details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
+
+
+class PaperCharge(Base):
+    __tablename__ = "paper_charges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trade_id = Column(Integer, ForeignKey("paper_trades.id", ondelete="CASCADE"), nullable=False, index=True)
+    order_id = Column(Integer, ForeignKey("paper_orders.id", ondelete="SET NULL"), nullable=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    brokerage = Column(Float, default=0.0, nullable=False)
+    stt = Column(Float, default=0.0, nullable=False)
+    exchange_turnover = Column(Float, default=0.0, nullable=False)
+    gst = Column(Float, default=0.0, nullable=False)
+    sebi_charges = Column(Float, default=0.0, nullable=False)
+    stamp_duty = Column(Float, default=0.0, nullable=False)
+    total_charges = Column(Float, nullable=False)
+    calculated_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class PaperRiskEvent(Base):
+    __tablename__ = "paper_risk_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    trading_date = Column(String(20), nullable=False, index=True)
+    risk_event_type = Column(String(50), nullable=False)
+    trigger_metric_name = Column(String(50), nullable=False)
+    metric_value = Column(Float, nullable=False)
+    threshold_value = Column(Float, nullable=False)
+    action_taken = Column(String(100), nullable=False)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
+
+
+class BacktestDailyResult(Base):
+    __tablename__ = "backtest_daily_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    trading_date = Column(String(20), nullable=False, index=True)
+    trades_count = Column(Integer, default=0, nullable=False)
+    wins_count = Column(Integer, default=0, nullable=False)
+    losses_count = Column(Integer, default=0, nullable=False)
+    gross_pnl = Column(Float, default=0.0, nullable=False)
+    charges = Column(Float, default=0.0, nullable=False)
+    net_pnl = Column(Float, default=0.0, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "trading_date", name="uq_bt_run_date"),
+    )
+
+
+class BacktestMetric(Base):
+    __tablename__ = "backtest_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    metric_key = Column(String(50), nullable=False)
+    metric_value = Column(Float, nullable=False)
+    category = Column(String(50), default="GENERAL", nullable=False)
+    description = Column(String(255), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "metric_key", name="uq_bt_run_metric"),
+    )
+
+
+class BacktestDataCoverage(Base):
+    __tablename__ = "backtest_data_coverage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    instrument_token = Column(String(50), nullable=False)
+    trading_symbol = Column(String(100), nullable=False)
+    timeframe = Column(String(20), default="1m", nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    total_candles = Column(Integer, nullable=False)
+    missing_candles = Column(Integer, default=0, nullable=False)
+    coverage_pct = Column(Float, default=100.0, nullable=False)
+
+
+class BacktestExecutionLog(Base):
+    __tablename__ = "backtest_execution_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    timestamp = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    level = Column(String(20), default="INFO", nullable=False)
+    message = Column(Text, nullable=False)
+    stage = Column(String(50), default="EXECUTION", nullable=False)
+
+
+class StrategySignalEvaluation(Base):
+    __tablename__ = "strategy_signal_evaluations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    signal_id = Column(Integer, ForeignKey("strategy_signals.id", ondelete="SET NULL"), nullable=True, index=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    timestamp = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    rule_name = Column(String(100), nullable=False)
+    passed = Column(Boolean, nullable=False)
+    expected_condition = Column(Text, nullable=True)
+    actual_value = Column(Text, nullable=True)
+
+
+class AgentDecision(Base):
+    __tablename__ = "agent_decisions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    signal_id = Column(Integer, ForeignKey("strategy_signals.id", ondelete="SET NULL"), nullable=True, index=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    agent_name = Column(String(100), nullable=False)
+    vote = Column(String(20), nullable=False)
+    confidence = Column(Float, default=1.0, nullable=False)
+    reasoning = Column(Text, nullable=True)
+    features_json = Column(Text, nullable=True)
+    timestamp = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class StrategyExecutionEvent(Base):
+    __tablename__ = "strategy_execution_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False)
+    details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
+
+
+class StrategyConfigVersion(Base):
+    __tablename__ = "strategy_config_versions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    strategy_id = Column(String(50), nullable=False, index=True)
+    version = Column(Integer, nullable=False)
+    config_json = Column(Text, nullable=False)
+    change_summary = Column(String(255), nullable=True)
+    changed_by = Column(String(100), default="system", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("strategy_id", "version", name="uq_strat_version"),
+    )
 
 
 

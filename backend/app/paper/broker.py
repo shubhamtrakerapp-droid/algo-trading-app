@@ -14,6 +14,12 @@ from backend.app.models import (
     SystemEvent,
     StrategyDailyRisk,
     StrategyVirtualAccount,
+    PaperAccount,
+    PaperAccountBalance,
+    PaperTradeEvent,
+    PaperExecutionLog,
+    PaperCharge,
+    PaperRiskEvent,
 )
 from backend.app.paper.charges import ChargesCalculator, TransactionCharges
 
@@ -492,6 +498,38 @@ class PaperBroker:
                         f"Net P&L ₹{ledger.realized_net_pnl} ({len(t_list)} trades), Available Cash ₹{ledger.available_cash}"
                     )
 
+                # 2b. Sync or upsert PaperAccount records for all active strategy ledgers
+                for sid, ledger in self.ledgers.items():
+                    stmt_pa = select(PaperAccount).where(PaperAccount.strategy_id == sid)
+                    res_pa = await session.execute(stmt_pa)
+                    pa = res_pa.scalar_one_or_none()
+                    if not pa:
+                        pa = PaperAccount(
+                            strategy_id=sid,
+                            account_name=ledger.strategy_name,
+                            account_number=f"ACC-{sid}",
+                            initial_capital=ledger.initial_capital,
+                            available_balance=ledger.available_cash,
+                            reserved_capital=ledger.reserved_capital,
+                            realized_pnl=ledger.realized_net_pnl,
+                            unrealized_pnl=0.0,
+                            total_charges=ledger.total_charges,
+                            total_slippage=ledger.slippage_cost,
+                            capital_deployment_cap_pct=ledger.capital_deployment_cap_pct,
+                            currency="INR",
+                            is_active=True
+                        )
+                        session.add(pa)
+                    else:
+                        pa.account_name = ledger.strategy_name
+                        pa.initial_capital = ledger.initial_capital
+                        pa.available_balance = ledger.available_cash
+                        pa.reserved_capital = ledger.reserved_capital
+                        pa.realized_pnl = ledger.realized_net_pnl
+                        pa.total_charges = ledger.total_charges
+                        pa.total_slippage = ledger.slippage_cost
+                        pa.capital_deployment_cap_pct = ledger.capital_deployment_cap_pct
+
                 # Backward compatibility: set global cash_balance to active strategy or UT_BOT
                 self.cash_balance = self.get_strategy_ledger("UT_BOT").available_cash
 
@@ -833,6 +871,24 @@ class PaperBroker:
                                 })
                             )
                             session.add(evt)
+                            risk_evt = PaperRiskEvent(
+                                strategy_id=strategy_id,
+                                trading_date=now.strftime("%Y-%m-%d"),
+                                risk_event_type="DAILY_RISK_LOCKED",
+                                trigger_metric_name="net_pnl",
+                                metric_value=float(daily_risk.get('realized_net_pnl', 0.0)),
+                                threshold_value=0.0,
+                                action_taken="ENTRY_REJECTED",
+                                details=f"{reason}: {status_txt}"
+                            )
+                            session.add(risk_evt)
+                            exec_log = PaperExecutionLog(
+                                strategy_id=strategy_id,
+                                action="ORDER_REJECTED",
+                                level="WARNING",
+                                message=f"Risk Lock Rejection: {reason} - {status_txt}"
+                            )
+                            session.add(exec_log)
                             await session.commit()
                     except Exception as e:
                         logger.error(f"Could not persist risk rejection event: {e}")
@@ -889,6 +945,24 @@ class PaperBroker:
                             })
                         )
                         session.add(evt)
+                        risk_evt = PaperRiskEvent(
+                            strategy_id=strategy_id,
+                            trading_date=now.strftime("%Y-%m-%d"),
+                            risk_event_type="BUYING_POWER_EXCEEDED",
+                            trigger_metric_name="required_margin",
+                            metric_value=required_margin,
+                            threshold_value=max_deployable,
+                            action_taken="ENTRY_REJECTED",
+                            details=rej_msg
+                        )
+                        session.add(risk_evt)
+                        exec_log = PaperExecutionLog(
+                            strategy_id=strategy_id,
+                            action="ORDER_REJECTED",
+                            level="WARNING",
+                            message=rej_msg
+                        )
+                        session.add(exec_log)
                         await session.commit()
                 except Exception as e:
                     logger.error(f"Could not persist buying power rejection event: {e}")
@@ -991,6 +1065,31 @@ class PaperBroker:
                     filled_at=now
                 )
                 session.add(order_db)
+                await session.flush()
+
+                exec_log = PaperExecutionLog(
+                    strategy_id=strategy_id,
+                    order_id=order_db.id,
+                    position_id=pos_db.id,
+                    action="BUY_FILLED",
+                    level="INFO",
+                    message=f"Paper Buy order filled for {position_data['symbol']} @ ₹{executed_entry_price} (Qty: {position_data['quantity']})"
+                )
+                session.add(exec_log)
+
+                bal_record = PaperAccountBalance(
+                    strategy_id=strategy_id,
+                    balance=round(ledger.available_cash + ledger.reserved_capital, 2),
+                    available_balance=ledger.available_cash,
+                    reserved_margin=ledger.reserved_capital,
+                    realized_pnl=ledger.realized_net_pnl,
+                    unrealized_pnl=0.0,
+                    change_amount=-required_margin,
+                    change_reason="TRADE_ENTRY_MARGIN",
+                    related_order_id=order_db.id,
+                    created_at=now
+                )
+                session.add(bal_record)
 
                 stmt_acc = update(StrategyVirtualAccount).where(
                     StrategyVirtualAccount.strategy_id == strategy_id
@@ -1400,8 +1499,61 @@ class PaperBroker:
                     created_at=exit_time
                 )
                 session.add(trade_db)
+                await session.flush()
 
-                # 4. Update StrategyVirtualAccount
+                trade_evt = PaperTradeEvent(
+                    trade_id=trade_db.id,
+                    position_id=pos["id"],
+                    strategy_id=strat_id,
+                    event_type=exit_reason,
+                    event_price=exit_price,
+                    event_quantity=qty,
+                    trigger_reason=exit_reason,
+                    notes=f"Net P&L: ₹{net_pnl:.2f}",
+                    created_at=exit_time
+                )
+                session.add(trade_evt)
+
+                chg_record = PaperCharge(
+                    trade_id=trade_db.id,
+                    order_id=order_db.id,
+                    strategy_id=strat_id,
+                    brokerage=chg.total_charges,
+                    stt=0.0,
+                    exchange_turnover=0.0,
+                    gst=0.0,
+                    sebi_charges=0.0,
+                    stamp_duty=0.0,
+                    total_charges=chg.total_charges,
+                    calculated_at=exit_time
+                )
+                session.add(chg_record)
+
+                exec_log = PaperExecutionLog(
+                    strategy_id=strat_id,
+                    order_id=order_db.id,
+                    position_id=pos["id"],
+                    action="POSITION_CLOSED",
+                    level="INFO",
+                    message=f"Position closed @ ₹{exit_price} ({exit_reason}). Net P&L: ₹{net_pnl:.2f}"
+                )
+                session.add(exec_log)
+
+                bal_record = PaperAccountBalance(
+                    strategy_id=strat_id,
+                    balance=round(ledger.available_cash + ledger.reserved_capital, 2),
+                    available_balance=ledger.available_cash,
+                    reserved_margin=ledger.reserved_capital,
+                    realized_pnl=ledger.realized_net_pnl,
+                    unrealized_pnl=0.0,
+                    change_amount=net_pnl,
+                    change_reason="TRADE_EXIT_SETTLEMENT",
+                    related_trade_id=trade_db.id,
+                    created_at=exit_time
+                )
+                session.add(bal_record)
+
+                # 4. Update StrategyVirtualAccount & PaperAccount
                 stmt_acc = update(StrategyVirtualAccount).where(
                     StrategyVirtualAccount.strategy_id == strat_id
                 ).values(
@@ -1414,6 +1566,18 @@ class PaperBroker:
                     updated_at=exit_time
                 )
                 await session.execute(stmt_acc)
+
+                stmt_pa = update(PaperAccount).where(
+                    PaperAccount.strategy_id == strat_id
+                ).values(
+                    available_balance=ledger.available_cash,
+                    reserved_capital=ledger.reserved_capital,
+                    realized_pnl=ledger.realized_net_pnl,
+                    total_charges=ledger.total_charges,
+                    total_slippage=ledger.slippage_cost,
+                    updated_at=exit_time
+                )
+                await session.execute(stmt_pa)
                 await session.commit()
 
             logger.info(

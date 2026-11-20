@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import select
+from sqlalchemy import select, desc
 
 from backend.app.coordinator import coordinator
 from backend.app.schemas.schemas import (
@@ -14,11 +14,32 @@ from backend.app.strategy.ai_micro_scalper.strategy import AIMicroScalperStrateg
 from backend.app.strategy.ai_micro_scalper.backtest import AIMicroScalperBacktestEngine
 from backend.app.backtest.data_loader import BacktestDataLoader
 from backend.app.database import AsyncSessionLocal
-from backend.app.models import PaperTrade, StrategyDailyRisk
+from backend.app.models import PaperTrade, StrategyDailyRisk, StrategyConfigVersion
 
 logger = logging.getLogger("nextrade.api.ai_micro_scalper")
 
 router = APIRouter(prefix="/api/ai-micro-scalper", tags=["AI Micro-Scalper"])
+
+
+async def _record_config_version(strategy_id: str, config: dict, summary: str = "Configuration updated"):
+    try:
+        async with AsyncSessionLocal() as session:
+            stmt = select(StrategyConfigVersion.version).where(
+                StrategyConfigVersion.strategy_id == strategy_id
+            ).order_by(desc(StrategyConfigVersion.version)).limit(1)
+            res = await session.execute(stmt)
+            latest_v = res.scalar_one_or_none() or 0
+            ver = StrategyConfigVersion(
+                strategy_id=strategy_id,
+                version=latest_v + 1,
+                config_json=json.dumps(config, default=str),
+                change_summary=summary,
+                changed_by="user"
+            )
+            session.add(ver)
+            await session.commit()
+    except Exception as e:
+        logger.error(f"Error persisting strategy config version: {e}")
 
 
 @router.get("/status")
@@ -184,6 +205,7 @@ async def update_ai_micro_scalper_config(
         ai_strat.slippage_points = float(req.slippage_points)
 
     logger.info("AI MICRO-SCALPER V1 configuration updated.")
+    await _record_config_version("AI_MICRO_SCALPER_V1", ai_strat.get_config_dict())
     return {
         "status": "SUCCESS",
         "message": "Configuration updated successfully.",
