@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: nextrade-backend-worker
+    runtime: python
+    region: singapore # or oregon / frankfurt depending on preference
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard with Supabase connection string
+      - key: SUPABASE_URL
+        value: https://rdlvisbqksxepcgpcusp.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Set in Render Dashboard
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_g5LAiBX5GWB5y9Crv2uBZw_nLg57m0o
+      - key: KOTAK_CONSUMER_KEY
+        sync: false
+      - key: KOTAK_CONSUMER_SECRET
+        sync: false
+      - key: KOTAK_MOBILE_NUMBER
+        sync: false
+      - key: KOTAK_UCC
+        sync: false
+      - key: KOTAK_MPIN
+        sync: false
+      - key: KOTAK_TOTP_KEY
+        sync: false
+      - key: KOTAK_ENVIRONMENT
+        value: prod
+      - key: CORS_ORIGINS
+        sync: false # Set with your Vercel URL

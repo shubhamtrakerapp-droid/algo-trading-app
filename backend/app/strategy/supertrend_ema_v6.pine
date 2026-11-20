@@ -1,0 +1,170 @@
+//@version=6
+strategy("NIFTY Supertrend + EMA 9/21 Scalper",
+     overlay=true,
+     pyramiding=0,
+     process_orders_on_close=true,
+     calc_on_order_fills=true)
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INPUTS
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+atrPeriod = input.int(10, "Supertrend ATR Length", minval=1)
+factor = input.float(3.0, "Supertrend Factor", minval=0.01, step=0.01)
+
+emaFastLength = input.int(9, "Fast EMA Length", minval=1)
+emaSlowLength = input.int(21, "Slow EMA Length", minval=1)
+
+lots = input.int(5, "Number of Lots", minval=1)
+lotSize = input.int(65, "Quantity Per Lot", minval=1)
+
+targetRupees = input.float(200, "Target Profit ₹", minval=1)
+stopRupees = input.float(1000, "Maximum Loss ₹", minval=1)
+
+entryCharge = input.float(10, "Entry Charges ₹", minval=0)
+exitCharge = input.float(10, "Exit Charges ₹", minval=0)
+
+startHour = input.int(9, "Entry Start Hour")
+startMinute = input.int(20, "Entry Start Minute")
+endHour = input.int(15, "Last Entry Hour")
+endMinute = input.int(15, "Last Entry Minute")
+squareOffHour = input.int(15, "Square Off Hour")
+squareOffMinute = input.int(20, "Square Off Minute")
+
+quantity = lots * lotSize
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SUPERTREND — TRADINGVIEW BUILT-IN
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[supertrend, direction] = ta.supertrend(factor, atrPeriod)
+
+supertrend := barstate.isfirst ? na : supertrend
+
+upTrend = plot(direction < 0 ? supertrend : na,
+     "Up Trend", color=color.green, style=plot.style_linebr)
+
+downTrend = plot(direction < 0 ? na : supertrend,
+     "Down Trend", color=color.red, style=plot.style_linebr)
+
+bodyMiddle = plot(barstate.isfirst ? na : (open + close) / 2,
+     "Body Middle", display=display.none)
+
+fill(bodyMiddle, upTrend, color=color.new(color.green, 90), fillgaps=false)
+fill(bodyMiddle, downTrend, color=color.new(color.red, 90), fillgaps=false)
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EMA 9 + EMA 21
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ema9 = ta.ema(close, emaFastLength)
+ema21 = ta.ema(close, emaSlowLength)
+
+plot(ema9, "EMA 9", color=color.blue, linewidth=2)
+plot(ema21, "EMA 21", color=color.orange, linewidth=2)
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ENTRY CONDITIONS
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+bullish = direction < 0
+bearish = direction > 0
+
+buyCE = bullish and ema9 > ema21 and close > ema9 and close > ema21
+buyPE = bearish and ema9 < ema21 and close < ema9 and close < ema21
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SESSION CONTROL — IST
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+currentTime = hour(time, "Asia/Kolkata") * 60 + minute(time, "Asia/Kolkata")
+
+startTime = startHour * 60 + startMinute
+lastEntryTime = endHour * 60 + endMinute
+squareOffTime = squareOffHour * 60 + squareOffMinute
+
+entryAllowed = currentTime >= startTime and currentTime <= lastEntryTime
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// POSITION MANAGEMENT
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+var float entryPrice = na
+var float activeTarget = na
+var float activeStop = na
+var string activeSide = ""
+
+// Net P&L targets converted into premium points.
+// Assumes flat entry + exit charges.
+
+targetPoints = (targetRupees + entryCharge + exitCharge) / quantity
+stopPoints = (stopRupees - entryCharge - exitCharge) / quantity
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ENTRY
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if barstate.isconfirmed and entryAllowed and strategy.position_size == 0
+
+    if buyCE
+        strategy.entry("BUY CE", strategy.long, qty=quantity)
+        entryPrice := close
+        activeTarget := close + targetPoints
+        activeStop := close - stopPoints
+        activeSide := "CE"
+
+    else if buyPE
+        strategy.entry("BUY PE", strategy.long, qty=quantity)
+        entryPrice := close
+        activeTarget := close + targetPoints
+        activeStop := close - stopPoints
+        activeSide := "PE"
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TARGET AND STOP LOSS
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if strategy.position_size > 0
+
+    strategy.exit("CE/PE TP-SL",
+         from_entry=activeSide == "CE" ? "BUY CE" : "BUY PE",
+         limit=activeTarget,
+         stop=activeStop)
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FORCE EXIT AT 15:20 IST
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if currentTime >= squareOffTime and strategy.position_size != 0
+    strategy.close_all(comment="AUTO SQUARE OFF 15:20")
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SIGNAL MARKERS
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+plotshape(buyCE and barstate.isconfirmed and entryAllowed,
+     title="BUY CE", text="BUY CE",
+     style=shape.labelup, location=location.belowbar,
+     color=color.green, textcolor=color.white)
+
+plotshape(buyPE and barstate.isconfirmed and entryAllowed,
+     title="BUY PE", text="BUY PE",
+     style=shape.labeldown, location=location.abovebar,
+     color=color.red, textcolor=color.white)
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ALERTS
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+alertcondition(buyCE and barstate.isconfirmed,
+     title="BUY CE", message="Supertrend + EMA BUY CE")
+
+alertcondition(buyPE and barstate.isconfirmed,
+     title="BUY PE", message="Supertrend + EMA BUY PE")
+
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INDICATOR STATUS
+//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+plot(activeTarget, "Active Target", color=color.green, style=plot.style_linebr)
+plot(activeStop, "Active Stop Loss", color=color.red, style=plot.style_linebr)
