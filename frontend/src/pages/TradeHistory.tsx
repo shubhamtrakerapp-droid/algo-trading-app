@@ -106,9 +106,10 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ onResetPaper }) => {
         </div>
       </div>
 
-      {/* Trades Table */}
+      {/* Trades: Desktop Table View + Mobile Card View */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table (Visible on md and larger) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs font-mono text-left">
             <thead>
               <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px]">
@@ -166,6 +167,63 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ onResetPaper }) => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Touch Cards View (Visible on screens smaller than md) */}
+        <div className="md:hidden divide-y divide-border/40 font-mono text-xs">
+          {trades.length === 0 ? (
+            <div className="px-4 py-8 text-center text-gray-500">
+              No closed paper trades yet.
+            </div>
+          ) : (
+            trades.map((t) => (
+              <div key={t.id} className="p-3.5 space-y-2.5 hover:bg-surface/30 transition-colors">
+                {/* Header: ID, Date, Contract & Net P&L */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-400 font-bold">#{t.id}</span>
+                      <span className="text-white font-bold truncate">{t.option_symbol}</span>
+                    </div>
+                    <span className="text-[10px] text-gray-500">{formatISTDate(t.entry_time)}</span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className={`text-sm font-bold block ${getPnlColor(t.net_pnl)}`}>
+                      {formatCurrency(t.net_pnl)}
+                    </span>
+                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${getExitReasonBadge(t.exit_reason)}`}>
+                      {t.exit_reason}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Grid Details */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-surface/50 rounded-lg p-2.5 border border-border/50">
+                  <div>
+                    <span className="text-gray-500 block text-[10px]">ENTRY</span>
+                    <span className="text-white font-semibold">₹{t.entry_price.toFixed(2)}</span>
+                    <span className="text-gray-400 block text-[10px]">{formatIST(t.entry_time)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block text-[10px]">EXIT</span>
+                    <span className="text-blue-400 font-semibold">₹{t.exit_price.toFixed(2)}</span>
+                    <span className="text-gray-400 block text-[10px]">{formatIST(t.exit_time)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block text-[10px]">QTY / CHARGES</span>
+                    <span className="text-gray-200">{t.quantity} qty</span>
+                    <span className="text-gray-400 block text-[10px]">Charges: ₹{t.total_charges.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block text-[10px]">GROSS P&amp;L</span>
+                    <span className={`font-semibold ${getPnlColor(t.gross_pnl)}`}>
+                      {formatCurrency(t.gross_pnl)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

@@ -388,10 +388,10 @@ export const LiveChart: React.FC<LiveChartProps> = ({
         {/* Row 1: Mode Switcher & Real-time Feeds status */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-border/40 font-mono text-xs">
           {/* Mode Tabs */}
-          <div className="bg-surface p-1 rounded-lg border border-border flex items-center space-x-1 font-bold">
+          <div className="bg-surface p-1 rounded-lg border border-border flex items-center gap-1 font-bold overflow-x-auto max-w-full">
             <button
               onClick={() => setChartMode('LIVE')}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all whitespace-nowrap text-[11px] sm:text-xs ${
                 chartMode === 'LIVE'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-gray-400 hover:text-white hover:bg-surface/80'
@@ -402,7 +402,7 @@ export const LiveChart: React.FC<LiveChartProps> = ({
             </button>
             <button
               onClick={() => setChartMode('BACKTEST')}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all whitespace-nowrap text-[11px] sm:text-xs ${
                 chartMode === 'BACKTEST'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-400 hover:text-white hover:bg-surface/80'
@@ -413,7 +413,7 @@ export const LiveChart: React.FC<LiveChartProps> = ({
             </button>
             <button
               onClick={() => setChartMode('HISTORICAL')}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all whitespace-nowrap text-[11px] sm:text-xs ${
                 chartMode === 'HISTORICAL'
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-gray-400 hover:text-white hover:bg-surface/80'

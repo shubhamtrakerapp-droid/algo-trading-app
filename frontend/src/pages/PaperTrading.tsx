@@ -28,7 +28,7 @@ export const PaperTrading: React.FC<PaperTradingProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-card border border-border rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
           <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
             <DollarSign className="w-5 h-5" />

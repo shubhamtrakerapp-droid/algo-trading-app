@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
+import { BottomNav } from './components/BottomNav';
 import { Dashboard } from './pages/Dashboard';
 import { LiveChart } from './pages/LiveChart';
 import { OptionChain } from './pages/OptionChain';
@@ -290,7 +291,7 @@ const MainApp: React.FC = () => {
         />
 
         {/* Main Viewport Container */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <main className="flex-1 w-full max-w-[1920px] mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 pb-24 lg:pb-6">
           <ErrorBoundary fallbackTitle="Dashboard Page Error">
             {activeTab === 'dashboard' && (
               <Dashboard
@@ -358,11 +359,22 @@ const MainApp: React.FC = () => {
           </ErrorBoundary>
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-border/40 py-3 px-4 text-center text-xs font-mono text-gray-500 shrink-0">
+        {/* Desktop Footer (Hidden on small mobile where BottomNav sits) */}
+        <footer className="border-t border-border/40 py-3 px-4 text-center text-xs font-mono text-gray-500 shrink-0 hidden sm:block">
           NEXTRADE &copy; {new Date().getFullYear()} &mdash; Automated Algorithm &amp; Paper Trading Terminal &bull;
           Paper Trading Mode Only &bull; Kotak Neo Integration
         </footer>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <BottomNav
+          activeTab={activeTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            setIsMobileSidebarOpen(false);
+          }}
+          onToggleMore={() => setIsMobileSidebarOpen(true)}
+          hasActivePosition={!!paperStatus?.active_position}
+        />
       </div>
 
       {/* Toast Notification */}

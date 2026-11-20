@@ -357,10 +357,19 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
           if (w > 0) subChartRef.current.applyOptions({ width: w });
         }
       };
+
+      let resizeObserver: ResizeObserver | null = null;
+      if (typeof ResizeObserver !== 'undefined' && chartContainerRef.current) {
+        resizeObserver = new ResizeObserver(() => {
+          handleResize();
+        });
+        resizeObserver.observe(chartContainerRef.current);
+      }
       window.addEventListener('resize', handleResize);
 
       return () => {
         window.removeEventListener('resize', handleResize);
+        if (resizeObserver) resizeObserver.disconnect();
         try {
           chart.remove();
         } catch {}

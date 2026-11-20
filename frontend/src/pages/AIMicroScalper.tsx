@@ -196,36 +196,36 @@ export const AIMicroScalper: React.FC = () => {
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-950 border border-indigo-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-950 border border-indigo-500/30 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <div className="p-3.5 bg-indigo-600/20 border border-indigo-500/40 rounded-xl text-indigo-400">
-              <Brain className="w-8 h-8" />
+          <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
+            <div className="p-2.5 sm:p-3.5 bg-indigo-600/20 border border-indigo-500/40 rounded-xl text-indigo-400 shrink-0">
+              <Brain className="w-6 h-6 sm:w-8 h-8" />
             </div>
-            <div>
-              <div className="flex items-center space-x-2.5">
-                <h1 className="text-2xl font-bold font-mono tracking-tight text-white">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-base sm:text-2xl font-bold font-mono tracking-tight text-white truncate">
                   NEXTRADE AI MICRO-SCALPER
                 </h1>
-                <span className="px-2.5 py-0.5 text-xs font-bold font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded-full">
+                <span className="px-2 py-0.5 text-[10px] sm:text-xs font-bold font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded-full">
                   V1.0
                 </span>
-                <span className="px-2.5 py-0.5 text-xs font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full flex items-center space-x-1">
+                <span className="px-2 py-0.5 text-[10px] sm:text-xs font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full flex items-center space-x-1">
                   <Shield className="w-3 h-3" />
                   <span>PAPER TRADING ONLY</span>
                 </span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-[11px] sm:text-xs text-gray-400 mt-1 line-clamp-2 sm:line-clamp-none">
                 Explainable Multi-Agent Algorithmic Micro-Scalping Engine with Non-Repainting 5m Trend &amp; 1m Pullback
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={handleToggleStrategy}
               disabled={actionLoading}
-              className={`px-4 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center space-x-2 shadow-lg ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center space-x-2 shadow-lg ${
                 status?.is_active
                   ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/40'
                   : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40'
@@ -239,7 +239,7 @@ export const AIMicroScalper: React.FC = () => {
               <button
                 onClick={handleEmergencyClose}
                 disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold font-mono bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg shadow-rose-900/40"
+                className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold font-mono bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg shadow-rose-900/40"
               >
                 EMERGENCY SQUARE-OFF
               </button>

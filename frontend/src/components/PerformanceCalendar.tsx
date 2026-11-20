@@ -682,129 +682,133 @@ export const PerformanceCalendar: React.FC<PerformanceCalendarProps> = ({
           )}
 
           {/* Calendar Grid — Monday to Sunday Columns */}
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-            {/* Weekday Column Headers */}
-            <div className="grid grid-cols-7 gap-2 mb-2 font-mono text-center text-xs font-bold text-gray-400 uppercase tracking-wider">
-              {WEEKDAY_SHORT.map((wd, i) => (
-                <div
-                  key={i}
-                  className={`py-2 rounded-lg bg-surface/50 border border-border/40 ${
-                    i >= 5 ? 'text-gray-500' : 'text-gray-300'
-                  }`}
-                >
-                  <span className="hidden sm:inline">{WEEKDAY_NAMES[i]}</span>
-                  <span className="sm:hidden">{wd}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Days Grid */}
-            {loading ? (
-              <div className="py-24 text-center font-mono text-xs text-gray-500">
-                <Activity className="w-6 h-6 text-purple-400 animate-spin mx-auto mb-2" />
-                Aggregating trade records for {MONTH_NAMES[month - 1]} {year}...
-              </div>
-            ) : !monthlyData || monthlyData.days.length === 0 ? (
-              <div className="py-24 text-center font-mono text-xs text-gray-500">
-                No calendar data available for this month.
-              </div>
-            ) : (
-              <div className="grid grid-cols-7 gap-2">
-                {/* Empty cells before month start (Monday = 0 ... Sunday = 6) */}
-                {Array.from({ length: monthlyData.first_weekday }).map((_, idx) => (
-                  <div
-                    key={`blank-${idx}`}
-                    className="min-h-[105px] rounded-xl border border-dashed border-border/20 bg-surface/10 opacity-30"
-                  />
-                ))}
-
-                {/* Actual Month Days */}
-                {monthlyData.days.map((d: CalendarDayItem) => {
-                  const isPositive = d.net_pnl > 0;
-                  const isNegative = d.net_pnl < 0;
-                  const isNeutral = d.has_trades && d.net_pnl === 0;
-                  const isToday =
-                    d.date === `${currentIstYear}-${String(currentIstMonth).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-                  return (
+          <div className="bg-card border border-border rounded-xl p-3 sm:p-5 shadow-sm">
+            <div className="overflow-x-auto pb-2">
+              <div className="min-w-[620px]">
+                {/* Weekday Column Headers */}
+                <div className="grid grid-cols-7 gap-2 mb-2 font-mono text-center text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  {WEEKDAY_SHORT.map((wd, i) => (
                     <div
-                      key={d.date}
-                      onClick={() => d.has_trades && loadDailyDetail(d.date)}
-                      className={`min-h-[105px] p-2.5 rounded-xl border flex flex-col justify-between transition-all font-mono select-none ${
-                        d.is_future
-                          ? 'border-border/20 bg-surface/10 opacity-30 pointer-events-none'
-                          : d.has_trades
-                          ? isPositive
-                            ? 'border-emerald-600/40 bg-emerald-950/20 hover:bg-emerald-950/40 hover:border-emerald-500 cursor-pointer shadow-sm'
-                            : isNegative
-                            ? 'border-rose-600/40 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-500 cursor-pointer shadow-sm'
-                            : 'border-border bg-surface/40 hover:bg-surface/80 cursor-pointer'
-                          : 'border-border/40 bg-surface/20 opacity-60 hover:opacity-100 hover:border-border'
-                      } ${isToday ? 'ring-2 ring-purple-500 shadow-purple-500/20' : ''}`}
+                      key={i}
+                      className={`py-2 rounded-lg bg-surface/50 border border-border/40 ${
+                        i >= 5 ? 'text-gray-500' : 'text-gray-300'
+                      }`}
                     >
-                      {/* Top Row: Date Number & Badge */}
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`text-xs font-bold ${
-                            isToday
-                              ? 'px-1.5 py-0.5 rounded bg-purple-600 text-white font-extrabold'
-                              : d.has_trades
-                              ? 'text-white'
-                              : 'text-gray-400'
-                          }`}
-                        >
-                          {d.day_number}
-                        </span>
-
-                        {d.has_trades && (
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              isPositive
-                                ? 'bg-emerald-400 ring-4 ring-emerald-400/20'
-                                : isNegative
-                                ? 'bg-rose-500 ring-4 ring-rose-500/20'
-                                : 'bg-gray-400'
-                            }`}
-                          />
-                        )}
-                      </div>
-
-                      {/* Middle: Net P&L Amount */}
-                      <div className="my-1">
-                        {d.has_trades ? (
-                          <div>
-                            <div className={`text-xs sm:text-sm font-extrabold ${getPnlColor(d.net_pnl)}`}>
-                              {formatCurrency(d.net_pnl)}
-                            </div>
-                            <div className="text-[10px] text-gray-400">
-                              {d.wins}W • {d.losses}L
-                            </div>
-                          </div>
-                        ) : d.is_future ? (
-                          <div className="text-[10px] text-gray-600 italic">Upcoming</div>
-                        ) : (
-                          <div className="text-[10px] text-gray-500">No trades</div>
-                        )}
-                      </div>
-
-                      {/* Bottom Row: Trades count & charges */}
-                      <div className="flex items-center justify-between text-[9px] text-gray-500 pt-1 border-t border-border/30">
-                        {d.has_trades ? (
-                          <>
-                            <span className="font-semibold text-gray-300">
-                              {d.trades_count} trade{d.trades_count > 1 ? 's' : ''}
-                            </span>
-                            <span className="text-gray-500">Chg ₹{d.total_charges.toFixed(0)}</span>
-                          </>
-                        ) : (
-                          <span className="text-gray-600">--</span>
-                        )}
-                      </div>
+                      <span className="hidden sm:inline">{WEEKDAY_NAMES[i]}</span>
+                      <span className="sm:hidden">{wd}</span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* Days Grid */}
+                {loading ? (
+                  <div className="py-24 text-center font-mono text-xs text-gray-500">
+                    <Activity className="w-6 h-6 text-purple-400 animate-spin mx-auto mb-2" />
+                    Aggregating trade records for {MONTH_NAMES[month - 1]} {year}...
+                  </div>
+                ) : !monthlyData || monthlyData.days.length === 0 ? (
+                  <div className="py-24 text-center font-mono text-xs text-gray-500">
+                    No calendar data available for this month.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-7 gap-2">
+                    {/* Empty cells before month start (Monday = 0 ... Sunday = 6) */}
+                    {Array.from({ length: monthlyData.first_weekday }).map((_, idx) => (
+                      <div
+                        key={`blank-${idx}`}
+                        className="min-h-[105px] rounded-xl border border-dashed border-border/20 bg-surface/10 opacity-30"
+                      />
+                    ))}
+
+                    {/* Actual Month Days */}
+                    {monthlyData.days.map((d: CalendarDayItem) => {
+                      const isPositive = d.net_pnl > 0;
+                      const isNegative = d.net_pnl < 0;
+                      const isNeutral = d.has_trades && d.net_pnl === 0;
+                      const isToday =
+                        d.date === `${currentIstYear}-${String(currentIstMonth).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+                      return (
+                        <div
+                          key={d.date}
+                          onClick={() => d.has_trades && loadDailyDetail(d.date)}
+                          className={`min-h-[105px] p-2.5 rounded-xl border flex flex-col justify-between transition-all font-mono select-none ${
+                            d.is_future
+                              ? 'border-border/20 bg-surface/10 opacity-30 pointer-events-none'
+                              : d.has_trades
+                              ? isPositive
+                                ? 'border-emerald-600/40 bg-emerald-950/20 hover:bg-emerald-950/40 hover:border-emerald-500 cursor-pointer shadow-sm'
+                                : isNegative
+                                ? 'border-rose-600/40 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-500 cursor-pointer shadow-sm'
+                                : 'border-border bg-surface/40 hover:bg-surface/80 cursor-pointer'
+                              : 'border-border/40 bg-surface/20 opacity-60 hover:opacity-100 hover:border-border'
+                          } ${isToday ? 'ring-2 ring-purple-500 shadow-purple-500/20' : ''}`}
+                        >
+                          {/* Top Row: Date Number & Badge */}
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`text-xs font-bold ${
+                                isToday
+                                  ? 'px-1.5 py-0.5 rounded bg-purple-600 text-white font-extrabold'
+                                  : d.has_trades
+                                  ? 'text-white'
+                                  : 'text-gray-400'
+                              }`}
+                            >
+                              {d.day_number}
+                            </span>
+
+                            {d.has_trades && (
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  isPositive
+                                    ? 'bg-emerald-400 ring-4 ring-emerald-400/20'
+                                    : isNegative
+                                    ? 'bg-rose-500 ring-4 ring-rose-500/20'
+                                    : 'bg-gray-400'
+                                }`}
+                              />
+                            )}
+                          </div>
+
+                          {/* Middle: Net P&L Amount */}
+                          <div className="my-1">
+                            {d.has_trades ? (
+                              <div>
+                                <div className={`text-xs sm:text-sm font-extrabold ${getPnlColor(d.net_pnl)}`}>
+                                  {formatCurrency(d.net_pnl)}
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                  {d.wins}W • {d.losses}L
+                                </div>
+                              </div>
+                            ) : d.is_future ? (
+                              <div className="text-[10px] text-gray-600 italic">Upcoming</div>
+                            ) : (
+                              <div className="text-[10px] text-gray-500">No trades</div>
+                            )}
+                          </div>
+
+                          {/* Bottom Row: Trades count & charges */}
+                          <div className="flex items-center justify-between text-[9px] text-gray-500 pt-1 border-t border-border/30">
+                            {d.has_trades ? (
+                              <>
+                                <span className="font-semibold text-gray-300">
+                                  {d.trades_count} trade{d.trades_count > 1 ? 's' : ''}
+                                </span>
+                                <span className="text-gray-500">Chg ₹{d.total_charges.toFixed(0)}</span>
+                              </>
+                            ) : (
+                              <span className="text-gray-600">--</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Calendar Legend */}
             <div className="flex flex-wrap items-center justify-between gap-4 mt-6 pt-4 border-t border-border/50 text-[11px] font-mono text-gray-400">

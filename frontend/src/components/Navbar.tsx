@@ -205,63 +205,68 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
       case 'CONNECTED':
         return (
           <span
-            className="flex items-center gap-1.5 font-mono px-2.5 py-1 rounded border bg-emerald-950/60 border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-sm"
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-emerald-950/60 border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-sm"
             title={`Real-time WebSocket streaming active. Subscriptions: ${subsCount} feeds. Age: ${dataAgeStr}`}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>CONNECTED</span>
-            <span className="text-[10px] text-emerald-400/80 font-normal">({dataAgeStr})</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="hidden sm:inline">CONNECTED</span>
+            <span className="text-[10px] text-emerald-400/80 font-normal hidden md:inline">({dataAgeStr})</span>
+            <span className="sm:hidden text-[10px]">LIVE</span>
           </span>
         );
       case 'CONNECTING':
         return (
           <span
-            className="flex items-center gap-1.5 font-mono px-2.5 py-1 rounded border bg-yellow-950/50 border-yellow-500/40 text-yellow-300 text-xs font-bold"
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-yellow-950/50 border-yellow-500/40 text-yellow-300 text-xs font-bold"
             title="Attempting connection to market data feed"
           >
-            <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping" />
-            <span>CONNECTING</span>
+            <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping shrink-0" />
+            <span className="hidden sm:inline">CONNECTING</span>
+            <span className="sm:hidden text-[10px]">SYNC</span>
           </span>
         );
       case 'RECONNECTING':
         return (
           <span
-            className="flex items-center gap-1.5 font-mono px-2.5 py-1 rounded border bg-amber-950/50 border-amber-500/40 text-amber-300 text-xs font-bold"
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-amber-950/50 border-amber-500/40 text-amber-300 text-xs font-bold"
             title="Socket dropped. Automatically reconnecting with backoff..."
           >
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>RECONNECTING</span>
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <span className="hidden sm:inline">RECONNECTING</span>
+            <span className="sm:hidden text-[10px]">RECONNECT</span>
           </span>
         );
       case 'STALE DATA':
         return (
           <span
-            className="flex items-center gap-1.5 font-mono px-2.5 py-1 rounded border bg-orange-950/60 border-orange-500/40 text-orange-300 text-xs font-bold"
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-orange-950/60 border-orange-500/40 text-orange-300 text-xs font-bold"
             title="No market ticks received in >15s. Automated entries paused."
           >
-            <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
-            <span>STALE DATA</span>
-            <span className="text-[10px] text-orange-400/80 font-normal">({dataAgeStr})</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+            <span className="hidden sm:inline">STALE DATA</span>
+            <span className="sm:hidden text-[10px]">STALE</span>
           </span>
         );
       case 'MARKET CLOSED':
         return (
           <span
-            className="flex items-center gap-1.5 font-mono px-2.5 py-1 rounded border bg-blue-950/60 border-blue-500/40 text-blue-300 text-xs font-bold"
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-blue-950/60 border-blue-500/40 text-blue-300 text-xs font-bold"
             title="Market hours closed (09:15-15:30 IST weekdays). Showing last settled prices."
           >
-            <Clock className="w-3.5 h-3.5 text-blue-400" />
-            <span>MARKET CLOSED</span>
+            <Clock className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="hidden sm:inline">MARKET CLOSED</span>
+            <span className="sm:hidden text-[10px]">CLOSED</span>
           </span>
         );
       default:
         return (
           <span
-            className="flex items-center gap-1.5 font-mono px-2.5 py-1 rounded border bg-rose-950/60 border-rose-500/40 text-rose-300 text-xs font-bold"
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-rose-950/60 border-rose-500/40 text-rose-300 text-xs font-bold"
             title="Feed disconnected. Check broker credentials or network."
           >
-            <WifiOff className="w-3.5 h-3.5 text-rose-400" />
-            <span>DISCONNECTED</span>
+            <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span className="hidden sm:inline">DISCONNECTED</span>
+            <span className="sm:hidden text-[10px]">OFFLINE</span>
           </span>
         );
     }

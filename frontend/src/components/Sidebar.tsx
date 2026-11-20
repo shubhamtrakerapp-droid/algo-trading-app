@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Items List */}
-        <nav className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-none">
+        <nav className="flex-1 px-2.5 py-4 pb-20 lg:pb-4 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-none">
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

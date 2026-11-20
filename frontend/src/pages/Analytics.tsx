@@ -341,9 +341,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono text-left">
+          <table className="w-full text-xs font-mono text-left min-w-[620px]">
             <thead>
-              <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px]">
+              <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px] whitespace-nowrap">
                 <th className="px-4 py-2">Date</th>
                 <th className="px-4 py-2 text-right">Trades</th>
                 <th className="px-4 py-2 text-right">Wins</th>
@@ -354,7 +354,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                 <th className="px-4 py-2 text-right">Net P&amp;L</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40">
+            <tbody className="divide-y divide-border/40 whitespace-nowrap">
               {!data?.daily_summary || data.daily_summary.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-gray-500">

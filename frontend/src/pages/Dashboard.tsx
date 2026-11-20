@@ -81,7 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-5">
       {/* Critical Paper Trading Notice Banner */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between">
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center space-x-3 text-xs text-amber-200">
           <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
           <span>
@@ -89,7 +89,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             Real-money order routing to Kotak Neo is strictly prohibited and disabled in software.
           </span>
         </div>
-        <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+        <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 shrink-0 self-start sm:self-auto">
           MAX LOSS PER TRADE: ₹1,000
         </span>
       </div>
@@ -447,9 +447,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono text-left">
+          <table className="w-full text-xs font-mono text-left min-w-[620px]">
             <thead>
-              <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px]">
+              <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px] whitespace-nowrap">
                 <th className="px-4 py-2">Date</th>
                 <th className="px-4 py-2 text-right">Trades</th>
                 <th className="px-4 py-2 text-right">Wins</th>
@@ -460,10 +460,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <th className="px-4 py-2 text-right">Net P&amp;L</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40">
+            <tbody className="divide-y divide-border/40 whitespace-nowrap">
               {!dailySummary || dailySummary.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500 whitespace-normal">
                     No daily trading records logged yet. Virtual trades will aggregate here automatically.
                   </td>
                 </tr>

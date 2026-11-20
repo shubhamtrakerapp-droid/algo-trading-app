@@ -283,8 +283,8 @@ export const OptionChain: React.FC<OptionChainProps> = ({ onContractSelected }) 
 
       {/* Option Chain Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono text-left">
+        <div className="overflow-x-auto pb-2">
+          <table className="w-full min-w-[620px] text-xs font-mono text-left">
             <thead>
               <tr className="bg-surface/80 border-b border-border text-gray-400 uppercase tracking-wider text-[11px]">
                 <th colSpan={3} className="px-4 py-2.5 text-center border-r border-border text-blue-400">

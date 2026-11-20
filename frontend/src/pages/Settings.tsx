@@ -771,9 +771,9 @@ export const Settings: React.FC<SettingsProps> = ({ marketStatus, onResetPaper }
       <div className="bg-card border border-border rounded-xl p-5">
         <h3 className="font-bold text-white text-sm mb-3">System Events &amp; Reconnection Audit</h3>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono text-left">
+          <table className="w-full text-xs font-mono text-left min-w-[540px]">
             <thead>
-              <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px]">
+              <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px] whitespace-nowrap">
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Timestamp (IST)</th>
                 <th className="px-3 py-2">Event Type</th>
@@ -784,22 +784,22 @@ export const Settings: React.FC<SettingsProps> = ({ marketStatus, onResetPaper }
             <tbody className="divide-y divide-border/40">
               {events.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-gray-500 whitespace-normal">
                     No system alert events recorded. System running smoothly.
                   </td>
                 </tr>
               ) : (
                 events.map((e) => (
                   <tr key={e.id} className="hover:bg-surface/40">
-                    <td className="px-3 py-2 text-gray-400 font-bold">#{e.id}</td>
-                    <td className="px-3 py-2 text-gray-400">{formatIST(e.created_at)}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-gray-400 font-bold whitespace-nowrap">#{e.id}</td>
+                    <td className="px-3 py-2 text-gray-400 whitespace-nowrap">{formatIST(e.created_at)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface border border-border">
                         {e.event_type}
                       </span>
                     </td>
-                    <td className="px-3 py-2 font-bold text-white">{e.title}</td>
-                    <td className="px-3 py-2 text-gray-300">{e.message}</td>
+                    <td className="px-3 py-2 font-bold text-white whitespace-nowrap">{e.title}</td>
+                    <td className="px-3 py-2 text-gray-300 min-w-[200px]">{e.message}</td>
                   </tr>
                 ))
               )}

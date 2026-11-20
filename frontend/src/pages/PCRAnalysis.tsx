@@ -328,7 +328,7 @@ export const PCRAnalysis: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-background text-gray-100 overflow-y-auto">
+    <div className="flex-1 flex flex-col min-w-0 bg-background text-gray-100">
       {/* 1. Header Bar */}
       <div className="border-b border-border bg-surface/70 backdrop-blur-md px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30 shadow-md">
         <div>

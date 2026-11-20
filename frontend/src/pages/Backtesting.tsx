@@ -1412,9 +1412,9 @@ export const Backtesting: React.FC<BacktestingProps> = ({ onNavigateToAnalytics 
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-xs font-mono text-left">
+                <table className="w-full text-xs font-mono text-left min-w-[720px]">
                   <thead>
-                    <tr className="bg-surface/70 border-b border-border text-gray-400 uppercase text-[10px]">
+                    <tr className="bg-surface/70 border-b border-border text-gray-400 uppercase text-[10px] whitespace-nowrap">
                       <th className="px-3 py-2.5">Date &amp; Day</th>
                       <th className="px-3 py-2.5">Status</th>
                       <th className="px-3 py-2.5 text-right">Trades</th>
@@ -1887,9 +1887,9 @@ export const Backtesting: React.FC<BacktestingProps> = ({ onNavigateToAnalytics 
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs font-mono text-left">
+            <table className="w-full text-xs font-mono text-left min-w-[800px]">
               <thead>
-                <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px]">
+                <tr className="bg-surface/60 border-b border-border text-gray-400 uppercase text-[11px] whitespace-nowrap">
                   <th className="px-3 py-2.5">Run</th>
                   <th className="px-3 py-2.5">Strategy</th>
                   <th className="px-3 py-2.5">Instrument</th>

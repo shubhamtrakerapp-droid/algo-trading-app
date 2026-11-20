@@ -266,7 +266,7 @@ export const Strategy: React.FC<StrategyProps> = ({ strategyStatus }) => {
     <div className="space-y-6">
       {/* Top Navigation Tabs & Active Indicator */}
       <div className="bg-card border border-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveTab('SUPERTREND_EMA')}
             className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-2 ${

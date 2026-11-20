@@ -98,12 +98,12 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({ position, onCloseP
         </div>
 
         {/* High / Low Bar */}
-        <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-xs font-mono text-gray-400">
+        <div className="mt-6 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-gray-400">
           <div>
             <span>Entry Time: </span>
-            <span className="text-white">{formatIST(position.entry_time)} IST</span>
+            <span className="text-white font-semibold">{formatIST(position.entry_time)} IST</span>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-3 sm:space-x-4">
             <span>
               Session High: <strong className="text-emerald-400">₹{position.highest_price.toFixed(2)}</strong>
             </span>
