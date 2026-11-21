@@ -11,12 +11,15 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 1. USERS & PROFILES
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+    id SERIAL PRIMARY KEY,
+    auth_user_id UUID UNIQUE,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE,
     full_name VARCHAR(100),
+    password_hash VARCHAR(255),
+    password_salt VARCHAR(64),
     role VARCHAR(20) DEFAULT 'trader' NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );
@@ -26,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.broker_connections (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     broker_name VARCHAR(50) DEFAULT 'kotak_neo' NOT NULL,
     environment VARCHAR(20) DEFAULT 'prod' NOT NULL,
     ucc VARCHAR(50),
@@ -106,7 +109,7 @@ CREATE INDEX IF NOT EXISTS ix_candle_symbol_tf_time
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.strategy_settings (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     strategy_id VARCHAR(50) DEFAULT 'AI_MICRO_SCALPER_V1' NOT NULL,
     name VARCHAR(100) NOT NULL,
     underlying VARCHAR(50) DEFAULT 'NIFTY' NOT NULL,
@@ -134,7 +137,7 @@ CREATE TABLE IF NOT EXISTS public.strategy_settings (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.strategy_signals (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
     strategy_id VARCHAR(50) DEFAULT 'AI_MICRO_SCALPER_V1' NOT NULL,
     strategy_config JSONB,
     timestamp TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
@@ -165,7 +168,7 @@ CREATE INDEX IF NOT EXISTS ix_strategy_signals_strategy_time
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.paper_orders (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     position_id BIGINT,
     order_type VARCHAR(20) DEFAULT 'MARKET' NOT NULL,
     transaction_type VARCHAR(10) NOT NULL, -- BUY, SELL
@@ -188,7 +191,7 @@ CREATE TABLE IF NOT EXISTS public.paper_orders (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.paper_positions (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     strategy_id VARCHAR(50) DEFAULT 'AI_MICRO_SCALPER_V1' NOT NULL,
     strategy_config JSONB,
     instrument_token VARCHAR(50) NOT NULL,
@@ -235,7 +238,7 @@ CREATE INDEX IF NOT EXISTS ix_paper_positions_status
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.paper_trades (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     strategy_id VARCHAR(50) DEFAULT 'AI_MICRO_SCALPER_V1' NOT NULL,
     strategy_config JSONB,
     position_id BIGINT REFERENCES public.paper_positions(id) ON DELETE CASCADE NOT NULL,
@@ -289,7 +292,7 @@ CREATE INDEX IF NOT EXISTS ix_paper_trades_user
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.charge_settings (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     entry_charge_per_order NUMERIC(10, 4) DEFAULT 10.0 NOT NULL,
     exit_charge_per_order NUMERIC(10, 4) DEFAULT 10.0 NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
@@ -300,7 +303,7 @@ CREATE TABLE IF NOT EXISTS public.charge_settings (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.auto_exit_settings (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     enabled BOOLEAN DEFAULT TRUE NOT NULL,
     auto_close_time VARCHAR(10) DEFAULT '15:20' NOT NULL,
     apply_to_all_strategies BOOLEAN DEFAULT TRUE NOT NULL,
@@ -317,7 +320,7 @@ CREATE TABLE IF NOT EXISTS public.auto_exit_settings (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.backtest_runs (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     strategy_id VARCHAR(50) DEFAULT 'AI_MICRO_SCALPER_V1' NOT NULL,
     strategy_name VARCHAR(100) NOT NULL,
     strategy_config JSONB,
@@ -413,7 +416,7 @@ CREATE INDEX IF NOT EXISTS ix_system_events_type_time
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.strategy_daily_risks (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     strategy_id VARCHAR(50) NOT NULL,
     trading_date VARCHAR(20) NOT NULL, -- YYYY-MM-DD IST
     realized_net_pnl NUMERIC(14, 4) DEFAULT 0.0 NOT NULL,
@@ -439,7 +442,7 @@ CREATE INDEX IF NOT EXISTS ix_daily_risk_strategy_date
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.strategy_virtual_accounts (
     id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     strategy_id VARCHAR(50) NOT NULL,
     strategy_name VARCHAR(100) NOT NULL,
     initial_capital NUMERIC(14, 4) DEFAULT 100000.0 NOT NULL,
@@ -660,7 +663,7 @@ CREATE POLICY "Service role full access to system_events"
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.paper_accounts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
     strategy_id VARCHAR(50) UNIQUE NOT NULL,
     account_name VARCHAR(100) NOT NULL,
     account_number VARCHAR(50) UNIQUE NOT NULL,

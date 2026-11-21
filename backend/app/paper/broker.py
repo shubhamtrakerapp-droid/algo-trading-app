@@ -734,6 +734,12 @@ class PaperBroker:
                 risk_rec = res_risk.scalars().first()
 
                 if risk_rec:
+                    # Preserve existing active lock across restart if already locked today
+                    if risk_rec.is_locked and risk_rec.lock_reason and risk_rec.lock_reason != "NONE":
+                        is_locked = True
+                        lock_reason = risk_rec.lock_reason
+                        status_text = f"Strategy Locked ({lock_reason})"
+
                     risk_rec.realized_net_pnl = realized_net
                     risk_rec.gross_pnl = gross_total
                     risk_rec.total_charges = charges_total
