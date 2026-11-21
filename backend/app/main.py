@@ -48,13 +48,38 @@ app = FastAPI(
 )
 
 # CORS configuration
+allowed_origins = list({x.strip() for x in settings.cors_origin_list if x.strip() and x.strip() != "*"})
+if "https://frontend-blush-ten-hatwklroqt.vercel.app" not in allowed_origins:
+    allowed_origins.append("https://frontend-blush-ten-hatwklroqt.vercel.app")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list + ["*"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def api_prefix_normalizer(request, call_next):
+    """
+    Normalizes incoming request paths so both /api/... and /... routes resolve cleanly.
+    Prevents 404s caused by Vercel serverless function path-stripping or rewrites.
+    """
+    path = request.scope.get("path", "")
+    if (
+        path
+        and not path.startswith("/api")
+        and not path.startswith("/docs")
+        and not path.startswith("/openapi")
+        and not path.startswith("/redoc")
+        and not path.startswith("/ws")
+    ):
+        request.scope["path"] = f"/api{path}"
+    return await call_next(request)
+
 
 # Include API Routers
 app.include_router(market_router)
@@ -70,6 +95,7 @@ app.include_router(auth_router)
 
 
 @app.get("/api/health")
+@app.get("/health")
 async def health_check():
     """System health check endpoint."""
     return {

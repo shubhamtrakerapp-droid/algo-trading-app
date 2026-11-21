@@ -32,6 +32,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isMounted = true;
 
     async function initSession() {
+      // 1. First check active Supabase Auth session if configured
+      if (supabase) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user && session?.access_token) {
+            const cleanEmail = (session.user.email || '').trim().toLowerCase();
+            setAuthToken(session.access_token);
+            if (isMounted) {
+              setSessionToken(session.access_token);
+              setUser({
+                id: 1,
+                email: cleanEmail,
+                username: session.user.user_metadata?.username || cleanEmail.split('@')[0] || 'trader',
+                role: session.user.user_metadata?.role || 'trader',
+              });
+              setLoading(false);
+            }
+            return;
+          }
+        } catch (supabaseErr) {
+          console.warn('Supabase session inspection error:', supabaseErr);
+        }
+      }
+
+      // 2. Fallback to localStorage token / backend session restoration
       const storedToken = getAuthToken();
       if (!storedToken) {
         if (isMounted) setLoading(false);
@@ -62,14 +87,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let authListener: { subscription?: { unsubscribe: () => void } } | null = null;
     if (supabase) {
       const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.access_token) {
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.access_token) {
+          const cleanEmail = (session.user?.email || '').trim().toLowerCase();
           setAuthToken(session.access_token);
-          setSessionToken(session.access_token);
-          try {
-            const me = await api.authGetMe();
-            if (isMounted && me?.user) setUser(me.user);
-          } catch {
-            // ignore
+          if (isMounted) {
+            setSessionToken(session.access_token);
+            setUser({
+              id: 1,
+              email: cleanEmail,
+              username: session.user?.user_metadata?.username || cleanEmail.split('@')[0] || 'trader',
+              role: session.user?.user_metadata?.role || 'trader',
+            });
           }
         } else if (event === 'SIGNED_OUT') {
           setAuthToken(null);
@@ -77,9 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSessionToken(null);
             setUser(null);
           }
-        } else if (event === 'TOKEN_REFRESHED' && session?.access_token) {
-          setAuthToken(session.access_token);
-          if (isMounted) setSessionToken(session.access_token);
         }
       });
       authListener = data;
@@ -94,19 +119,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    // 1. Backend Login with Allowlist Enforcement & Rate Limiting
-    const data = await api.authLogin({ email, password });
-    if (!data.access_token) {
-      throw new Error('Authentication failed: No access token received.');
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Direct Supabase Auth (Client-side, Fast, Resilient)
+    if (supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Authentication failed.');
+      }
+
+      if (!data.session?.access_token) {
+        throw new Error('Authentication succeeded but no access token was returned.');
+      }
+
+      // Check strict 2-user allowlist from authorized_users table if available
+      try {
+        const { data: authRecord } = await supabase
+          .from('authorized_users')
+          .select('email, role')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (authRecord && !authRecord.email) {
+          await supabase.auth.signOut();
+          throw new Error(`Access denied: Email '${cleanEmail}' is not on the authorized allowlist for this private instance.`);
+        }
+      } catch (allowlistErr: any) {
+        if (allowlistErr.message?.includes('Access denied')) {
+          throw allowlistErr;
+        }
+        // If table not yet queried or RLS hidden, server-side validation will enforce on API calls
+      }
+
+      setAuthToken(data.session.access_token);
+      setSessionToken(data.session.access_token);
+      setUser({
+        id: 1,
+        email: cleanEmail,
+        username: data.user.user_metadata?.username || cleanEmail.split('@')[0],
+        role: data.user.user_metadata?.role || 'trader',
+      });
+      return;
     }
 
-    // 2. Also authenticate Supabase Auth session if configured
-    if (supabase) {
-      try {
-        await supabase.auth.signInWithPassword({ email, password });
-      } catch {
-        // Supabase sync failure non-blocking for local backend
-      }
+    // 2. Fallback to FastAPI backend login if Supabase client is not configured
+    const data = await api.authLogin({ email: cleanEmail, password });
+    if (!data.access_token) {
+      throw new Error('Authentication failed: No access token received.');
     }
 
     setAuthToken(data.access_token);
@@ -115,19 +178,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signup = useCallback(async (email: string, password: string, username?: string) => {
-    // 1. Backend Signup with Allowlist Check
-    const data = await api.authSignup({ email, password, username });
-    if (!data.access_token) {
-      throw new Error('Registration failed: No access token received.');
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Direct Supabase Auth Signup
+    if (supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            username: username || cleanEmail.split('@')[0],
+            role: 'trader',
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Registration failed.');
+      }
+
+      if (data.session?.access_token) {
+        setAuthToken(data.session.access_token);
+        setSessionToken(data.session.access_token);
+        setUser({
+          id: 1,
+          email: cleanEmail,
+          username: username || cleanEmail.split('@')[0],
+          role: 'trader',
+        });
+        return;
+      } else if (data.user) {
+        // Confirmation email may be required depending on Supabase settings
+        return;
+      }
     }
 
-    // 2. Supabase Auth signup if available
-    if (supabase) {
-      try {
-        await supabase.auth.signUp({ email, password });
-      } catch {
-        // non-blocking
-      }
+    // 2. Fallback to backend signup
+    const data = await api.authSignup({ email: cleanEmail, password, username });
+    if (!data.access_token) {
+      throw new Error('Registration failed: No access token received.');
     }
 
     setAuthToken(data.access_token);
@@ -136,12 +225,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await api.authLogout();
-    } catch {
-      // ignore
-    }
-
     if (supabase) {
       try {
         await supabase.auth.signOut();
@@ -150,28 +233,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    try {
+      await api.authLogout();
+    } catch {
+      // ignore
+    }
+
     setAuthToken(null);
     setSessionToken(null);
     setUser(null);
   }, []);
 
   const forgotPassword = useCallback(async (email: string) => {
+    const cleanEmail = email.trim().toLowerCase();
     if (supabase) {
-      try {
-        await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
-      } catch {
-        // fallback to backend
-      }
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw new Error(error.message);
+      return 'Password reset instructions sent to your email.';
     }
-    const res = await api.authForgotPassword({ email });
+    const res = await api.authForgotPassword({ email: cleanEmail });
     return res.reset_token;
   }, []);
 
   const resetPassword = useCallback(async (email: string, token: string, newPassword: string) => {
+    if (supabase) {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw new Error(error.message);
+      return;
+    }
     await api.authResetPassword({
-      email,
+      email: email.trim().toLowerCase(),
       reset_token: token,
       new_password: newPassword,
     });

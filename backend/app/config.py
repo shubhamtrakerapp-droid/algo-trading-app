@@ -61,7 +61,10 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development", alias="APP_ENV")
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
     app_port: int = Field(default=8005, alias="APP_PORT")
-    cors_origins: str = Field(default="http://localhost:5173,http://127.0.0.1:5173", alias="CORS_ORIGINS")
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173,https://frontend-blush-ten-hatwklroqt.vercel.app",
+        alias="CORS_ORIGINS"
+    )
 
     # Paper Trading Risk & Session Settings
     paper_initial_capital: float = Field(default=100000.0, alias="PAPER_INITIAL_CAPITAL")

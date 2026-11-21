@@ -100,6 +100,13 @@ class SystemCoordinator:
             on_error=self.on_error
         )
 
+        # Check if running in a serverless environment (Vercel, AWS Lambda)
+        import os
+        is_serverless = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
+        if is_serverless:
+            logger.info("Running in SERVERLESS environment (Vercel): Restored DB state and option selector; skipping persistent WebSocket background loops.")
+            return
+
         # 4. Start active feed
         await self.active_adapter.start()
 

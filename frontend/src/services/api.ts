@@ -31,8 +31,13 @@ import {
 } from '../types';
 
 // Configure base URL dynamically from environment (Vercel production support)
-const rawBase = import.meta.env.VITE_API_BASE_URL || '';
-const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
+// Normalizes base URL and guarantees exactly one single '/api' prefix without duplicates
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+// Strip trailing slashes, then strip any trailing /api or /api/
+const cleanOrigin = rawBase.replace(/\/+$/, '').replace(/\/api\/?$/, '');
+export const API_BASE = cleanOrigin ? `${cleanOrigin}/api` : '/api';
+
+export const getApiBaseUrl = () => API_BASE;
 
 let currentAuthToken: string | null = typeof window !== 'undefined'
   ? localStorage.getItem('nextrade_auth_token')
@@ -61,7 +66,14 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     headers['Authorization'] = `Bearer ${currentAuthToken}`;
   }
 
-  const res = await fetch(`${API_BASE}${url}`, {
+  // Ensure path starts with '/' and does not duplicate '/api' if already present
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  const normalizedPath = cleanPath.startsWith('/api/')
+    ? cleanPath.substring(4) // strip leading '/api' so it's not duplicated
+    : cleanPath;
+
+  const targetUrl = `${API_BASE}${normalizedPath}`;
+  const res = await fetch(targetUrl, {
     ...options,
     headers,
   });
@@ -79,6 +91,10 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // System Health
+  getHealth: () =>
+    fetchJson<{ status: string; app: string; version: string; mode: string; feed_mode?: string; timestamp?: string }>('/health'),
+
   // Market
   getMarketStatus: () => fetchJson<MarketStatus>('/market/status'),
   getCandles: (
