@@ -1,4 +1,6 @@
-export type ConnectionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING' | 'STALE DATA' | 'MARKET CLOSED';
+import { supabase } from './supabase';
+
+export type ConnectionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING' | 'STALE DATA' | 'MARKET CLOSED' | 'STANDBY' | 'DELAYED';
 
 export type MessageListener = (data: any) => void;
 export type StatusListener = (status: ConnectionState, details?: any) => void;
@@ -10,20 +12,22 @@ class WebSocketClient {
   private reconnectTimeout: number | null = null;
   private pingInterval: number | null = null;
   private staleTimer: number | null = null;
+  private realtimeChannel: any = null;
 
   public isConnected: boolean = false;
-  public connectionState: ConnectionState = 'DISCONNECTED';
+  public connectionState: ConnectionState = 'STANDBY';
   public lastTickTime: Date | null = null;
   public lastMessageTime: Date | null = null;
   public activeSubscriptions: Set<string> = new Set(['NIFTY 50', 'NIFTY ATM CE']);
   private reconnectAttempts: number = 0;
 
   public connect() {
+    // 1. Initialize Supabase Realtime channel if available
+    this.initSupabaseRealtime();
+
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
-
-    this.setConnectionState(this.reconnectAttempts > 0 ? 'RECONNECTING' : 'CONNECTING');
 
     const envWsUrl = import.meta.env.VITE_WS_URL;
     let wsUrl = envWsUrl;
@@ -34,11 +38,19 @@ class WebSocketClient {
         const wsHost = backendBase.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
         wsUrl = `${wsProto}${wsHost}/ws`;
       } else {
+        const isVercel = typeof window !== 'undefined' && window.location.host.includes('vercel.app');
+        if (isVercel) {
+          // Frontend-only Vercel deployment: No local WebSocket server exists on static Vercel host
+          this.setConnectionState('STANDBY');
+          return;
+        }
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
         wsUrl = `${protocol}//${host}/ws`;
       }
     }
+
+    this.setConnectionState(this.reconnectAttempts > 0 ? 'RECONNECTING' : 'CONNECTING');
 
     try {
       this.ws = new WebSocket(wsUrl);
@@ -206,9 +218,41 @@ class WebSocketClient {
     }
   }
 
+  private initSupabaseRealtime() {
+    if (this.realtimeChannel || !supabase) return;
+    try {
+      this.realtimeChannel = supabase
+        .channel('public:trading-feed')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'strategy_signals' },
+          (payload) => {
+            this.lastTickTime = new Date();
+            this.notify({ type: 'STRATEGY_SIGNAL', data: payload.new });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'paper_trades' },
+          (payload) => {
+            this.lastTickTime = new Date();
+            this.notify({ type: 'TRADE_UPDATE', data: payload.new });
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      console.warn('Supabase Realtime subscription init error:', e);
+    }
+  }
+
   private scheduleReconnect() {
     if (this.reconnectTimeout) return;
     this.reconnectAttempts += 1;
+    if (this.reconnectAttempts > 4) {
+      // Switch to standby mode if no persistent backend WebSocket exists
+      this.setConnectionState('STANDBY');
+      return;
+    }
     this.setConnectionState('RECONNECTING');
 
     // Exponential backoff: 1s, 1.5s, 2.2s ... up to 10s max

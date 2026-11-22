@@ -222,28 +222,13 @@ export const AIMicroScalper: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button
-              onClick={handleToggleStrategy}
-              disabled={actionLoading}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center space-x-2 shadow-lg ${
-                status?.is_active
-                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/40'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40'
-              }`}
+            <span
+              className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold font-mono bg-slate-800 border border-slate-700/60 text-amber-400 flex items-center space-x-2"
+              title="Read-Only Observational Mode: Strategy activation and pause are restricted"
             >
-              <Zap className="w-4 h-4" />
-              <span>{status?.is_active ? 'PAUSE STRATEGY' : 'ACTIVATE STRATEGY'}</span>
-            </button>
-
-            {activePos && (
-              <button
-                onClick={handleEmergencyClose}
-                disabled={actionLoading}
-                className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold font-mono bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg shadow-rose-900/40"
-              >
-                EMERGENCY SQUARE-OFF
-              </button>
-            )}
+              <Shield className="w-4 h-4 text-amber-400" />
+              <span>READ-ONLY OBSERVATION</span>
+            </span>
           </div>
         </div>
 
@@ -504,11 +489,12 @@ export const AIMicroScalper: React.FC = () => {
               <p className="text-xs text-gray-400 mt-0.5">Customize trading thresholds and risk budget</p>
             </div>
             <button
-              type="submit"
-              disabled={actionLoading}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-mono font-bold transition-all shadow-lg shadow-indigo-950/50"
+              type="button"
+              disabled
+              title="Read-Only Mode: Modifying strategy parameters is disabled"
+              className="px-5 py-2.5 bg-slate-800 border border-slate-700/60 text-slate-500 rounded-xl text-xs font-mono font-bold cursor-not-allowed"
             >
-              SAVE SETTINGS
+              READ-ONLY PARAMETERS
             </button>
           </div>
 
@@ -892,11 +878,12 @@ export const AIMicroScalper: React.FC = () => {
 
               <div className="pt-2">
                 <button
-                  onClick={handleEmergencyClose}
-                  disabled={actionLoading}
-                  className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition-all"
+                  type="button"
+                  disabled
+                  title="Read-Only Mode: Position square-off is disabled in observational mode"
+                  className="w-full py-2.5 bg-slate-800 border border-slate-700/60 text-slate-500 rounded-xl font-bold cursor-not-allowed"
                 >
-                  CLOSE PAPER POSITION NOW
+                  READ-ONLY POSITION (CLOSED BY ALGO WORKER)
                 </button>
               </div>
             </div>

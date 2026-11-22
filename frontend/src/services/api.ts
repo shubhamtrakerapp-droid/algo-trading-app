@@ -29,6 +29,7 @@ import {
   PCRResponse,
   PCRHistoryResponse,
 } from '../types';
+import { supabase } from './supabase';
 
 // Configure base URL dynamically from environment (Vercel production support)
 // Normalizes base URL and guarantees exactly one single '/api' prefix without duplicates
@@ -96,7 +97,38 @@ export const api = {
     fetchJson<{ status: string; app: string; version: string; mode: string; feed_mode?: string; timestamp?: string }>('/health'),
 
   // Market
-  getMarketStatus: () => fetchJson<MarketStatus>('/market/status'),
+  getMarketStatus: async (): Promise<MarketStatus> => {
+    try {
+      const data = await fetchJson<MarketStatus>('/market/status');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nextrade_market_status', JSON.stringify(data));
+      }
+      return data;
+    } catch {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('nextrade_market_status') : null;
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch {}
+      }
+      return {
+        is_connected: false,
+        is_demo: true,
+        broker_name: 'Kotak Neo (Standby Observation)',
+        feed_status: 'DISCONNECTED',
+        is_stale: true,
+        last_tick_time: null,
+        nifty_price: 24500.0,
+        option_symbol: 'NIFTY ATM CE',
+        option_premium: 145.0,
+        atm_strike: 24500.0,
+        expiry: 'WEEKLY',
+        lot_size: 65,
+        instrument_token: 'OPT_24500_CE',
+        timestamp: new Date().toISOString(),
+      };
+    }
+  },
   getCandles: (
     symbolOrOptions:
       | string
@@ -169,8 +201,24 @@ export const api = {
     fetchJson<{ status: string; instruments: InstrumentItem[] }>(
       `/market/chart/instruments?query=${encodeURIComponent(query)}`
     ),
-  getChartBacktestRuns: () =>
-    fetchJson<{ status: string; runs: BacktestRunItem[] }>('/market/chart/backtest-runs'),
+  getChartBacktestRuns: async (): Promise<{ status: string; runs: BacktestRunItem[] }> => {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('backtest_runs')
+          .select('*')
+          .order('id', { ascending: false });
+        if (!error && data && data.length > 0) {
+          return { status: 'SUCCESS', runs: data as BacktestRunItem[] };
+        }
+      } catch {}
+    }
+    try {
+      return await fetchJson<{ status: string; runs: BacktestRunItem[] }>('/market/chart/backtest-runs');
+    } catch {
+      return { status: 'STANDBY', runs: [] };
+    }
+  },
 
   getOptionChain: () => fetchJson<OptionChainResponse>('/market/option-chain'),
   getExpiries: () => fetchJson<{ expiries: string[] }>('/market/expiries'),
@@ -196,23 +244,154 @@ export const api = {
   getStrategySettings: () => fetchJson<StrategySettings>('/strategy/settings'),
   getStrategyStatus: (strategy_id?: string) =>
     fetchJson<any>(strategy_id ? `/strategy/status?strategy_id=${strategy_id}` : '/strategy/status'),
-  getSignals: (limit: number = 50) => fetchJson<any[]>(`/strategy/signals?limit=${limit}`),
+  getSignals: async (limit: number = 50): Promise<any[]> => {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('strategy_signals')
+          .select('*')
+          .order('id', { ascending: false })
+          .limit(limit);
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch {}
+    }
+    try {
+      return await fetchJson<any[]>(`/strategy/signals?limit=${limit}`);
+    } catch {
+      return [];
+    }
+  },
 
-  // Paper Trading
-  getPaperStatus: () => fetchJson<PaperAccountStatus>('/paper/status'),
-  getOpenPosition: () => fetchJson<{ position: PaperPosition | null }>('/paper/position'),
-  closePosition: () =>
-    fetchJson<{ status: string; trade: any }>('/paper/close', {
-      method: 'POST',
-    }),
-  placeManualOrder: (lots: number = 1) =>
-    fetchJson<{ status: string; position: PaperPosition }>('/paper/order', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'BUY', lots }),
-    }),
-  getPaperTrades: (limit: number = 100) => fetchJson<PaperTrade[]>(`/paper/trades?limit=${limit}`),
+  // Paper Trading (Read-Only Terminal Enforcement)
+  getPaperStatus: async (): Promise<PaperAccountStatus> => {
+    try {
+      const data = await fetchJson<PaperAccountStatus>('/paper/status');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nextrade_paper_status', JSON.stringify(data));
+      }
+      return data;
+    } catch {
+      if (supabase) {
+        try {
+          const { data } = await supabase
+            .from('paper_account_balances')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(1);
+          if (data && data.length > 0) {
+            const b = data[0];
+            return {
+              initial_capital: b.initial_capital || 100000.0,
+              cash_balance: b.current_cash || 100000.0,
+              portfolio_value: (b.current_cash || 100000.0) + (b.unrealized_pnl || 0.0),
+              realized_pnl: b.realized_pnl || 0.0,
+              unrealized_pnl: b.unrealized_pnl || 0.0,
+              daily_pnl: b.daily_pnl || 0.0,
+              total_trades: b.total_trades || 0,
+              win_rate: b.win_rate || 0.0,
+              active_position: null,
+              default_lots: 1,
+              max_loss_per_trade: 1000.0,
+              target_points: 4.0,
+              stop_points: 4.0,
+              force_exit_time_ist: '15:20',
+            };
+          }
+        } catch {}
+      }
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('nextrade_paper_status') : null;
+      if (cached) {
+        try { return JSON.parse(cached); } catch {}
+      }
+      return {
+        initial_capital: 100000.0,
+        cash_balance: 100000.0,
+        portfolio_value: 100000.0,
+        realized_pnl: 0.0,
+        unrealized_pnl: 0.0,
+        daily_pnl: 0.0,
+        total_trades: 0,
+        win_rate: 0.0,
+        active_position: null,
+        default_lots: 1,
+        max_loss_per_trade: 1000.0,
+        target_points: 4.0,
+        stop_points: 4.0,
+        force_exit_time_ist: '15:20',
+      };
+    }
+  },
+  getOpenPosition: async (): Promise<{ position: PaperPosition | null }> => {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('paper_positions')
+          .select('*')
+          .eq('is_open', true)
+          .limit(1);
+        if (!error && data && data.length > 0) {
+          return { position: data[0] as PaperPosition };
+        }
+      } catch {}
+    }
+    try {
+      return await fetchJson<{ position: PaperPosition | null }>('/paper/position');
+    } catch {
+      return { position: null };
+    }
+  },
+  closePosition: async (): Promise<{ status: string; trade: any }> => {
+    return Promise.reject(new Error('Read-Only Mode: Position square-off is disabled in observational mode.'));
+  },
+  placeManualOrder: async (_lots: number = 1): Promise<{ status: string; position: PaperPosition }> => {
+    return Promise.reject(new Error('Read-Only Mode: Order execution is disabled. NEXTRADE is in observational mode.'));
+  },
+  getPaperTrades: async (limit: number = 100): Promise<PaperTrade[]> => {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('paper_trades')
+          .select('*')
+          .order('id', { ascending: false })
+          .limit(limit);
+        if (!error && data && data.length > 0) {
+          return data as PaperTrade[];
+        }
+      } catch {}
+    }
+    try {
+      const data = await fetchJson<PaperTrade[]>(`/paper/trades?limit=${limit}`);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nextrade_paper_trades', JSON.stringify(data));
+      }
+      return data;
+    } catch {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('nextrade_paper_trades') : null;
+      return cached ? JSON.parse(cached) : [];
+    }
+  },
   getPaperTradesCsvUrl: () => `${API_BASE}/paper/trades/csv`,
-  getPaperOrders: (limit: number = 100) => fetchJson<any[]>(`/paper/orders?limit=${limit}`),
+  getPaperOrders: async (limit: number = 100): Promise<any[]> => {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('paper_orders')
+          .select('*')
+          .order('id', { ascending: false })
+          .limit(limit);
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch {}
+    }
+    try {
+      return await fetchJson<any[]>(`/paper/orders?limit=${limit}`);
+    } catch {
+      return [];
+    }
+  },
   getChargesSettings: async (): Promise<ChargeSettings> => {
     try {
       const data = await fetchJson<ChargeSettings>('/paper/charges-settings');
@@ -354,10 +533,9 @@ export const api = {
       };
     }
   },
-  resetPaperData: () =>
-    fetchJson<{ status: string; message: string }>('/paper/reset', {
-      method: 'POST',
-    }),
+  resetPaperData: async (): Promise<{ status: string; message: string }> => {
+    return Promise.reject(new Error('Read-Only Mode: Resetting or clearing paper trading records is disabled.'));
+  },
 
   // Backtesting
   runBacktest: (params: {

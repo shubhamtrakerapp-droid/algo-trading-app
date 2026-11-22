@@ -389,10 +389,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
 
               <button
-                onClick={onCloseTrade}
-                className="w-full mt-3 py-2 px-3 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 font-semibold hover:bg-rose-600/30 transition-colors"
+                disabled
+                title="Read-Only Mode: Position square-off is disabled"
+                className="w-full mt-3 py-2 px-3 rounded-lg bg-slate-800 border border-slate-700/50 text-slate-500 font-semibold cursor-not-allowed"
               >
-                Square Off Position
+                Square Off (Read-Only Mode)
               </button>
             </div>
           ) : (
@@ -401,11 +402,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Algorithm is continuously listening for completed 1-minute candle BUY signals.
               </p>
               <button
-                onClick={onOpenTrade}
-                className="py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors inline-flex items-center gap-1.5"
+                disabled
+                title="Read-Only Mode: Manual trade execution is disabled"
+                className="py-2 px-4 rounded-lg bg-slate-800 border border-slate-700/50 text-slate-500 font-semibold text-xs cursor-not-allowed inline-flex items-center gap-1.5"
               >
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                Trigger Paper Test Trade
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-600" />
+                Read-Only Observational Mode
               </button>
             </div>
           )}

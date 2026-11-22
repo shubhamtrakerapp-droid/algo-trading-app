@@ -257,6 +257,28 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
             <span className="sm:hidden text-[10px]">CLOSED</span>
           </span>
         );
+      case 'DELAYED':
+        return (
+          <span
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-amber-950/60 border-amber-500/40 text-amber-300 text-xs font-bold"
+            title="Tick delay > 3.0s. Operating in delayed data mode."
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="hidden sm:inline">DELAYED</span>
+            <span className="sm:hidden text-[10px]">DELAY</span>
+          </span>
+        );
+      case 'STANDBY':
+        return (
+          <span
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-slate-900 border-slate-700 text-slate-400 text-xs font-bold"
+            title="Market Feed Standby — Persistent Kotak worker not connected. Displaying latest recorded market snapshot."
+          >
+            <WifiOff className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <span className="hidden sm:inline">STANDBY</span>
+            <span className="sm:hidden text-[10px]">STANDBY</span>
+          </span>
+        );
       default:
         return (
           <span
@@ -382,6 +404,15 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
 
           {/* Connection & Data Health Monitor Badge */}
           {renderHealthBadge()}
+
+          {/* Read-Only Terminal Mode Badge */}
+          <span
+            className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30"
+            title="Read-Only Observational Terminal: Live and historical data observation active; order executions and setting modifications are restricted."
+          >
+            <Shield className="w-3 h-3 text-amber-400" />
+            Read-Only
+          </span>
 
           {/* User Auth Profile & Controls */}
           {user && (

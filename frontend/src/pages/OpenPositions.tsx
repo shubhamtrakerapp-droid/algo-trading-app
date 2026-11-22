@@ -42,13 +42,13 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({ position, onCloseP
             <div className={`text-xl font-bold font-mono ${getPnlColor(position.net_pnl)}`}>
               {formatCurrency(position.net_pnl)}
             </div>
-            <button
-              onClick={onClosePosition}
-              className="py-1.5 px-3 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 font-semibold text-xs hover:bg-rose-600/30 transition-colors flex items-center gap-1.5"
+            <span
+              title="Read-Only Mode: Position modifications are disabled in observational mode"
+              className="py-1.5 px-3 rounded-lg bg-slate-800 border border-slate-700/60 text-slate-400 font-semibold text-xs flex items-center gap-1.5 cursor-not-allowed"
             >
-              <Square className="w-3.5 h-3.5 fill-rose-300" />
-              Close Position
-            </button>
+              <Square className="w-3.5 h-3.5 fill-slate-500" />
+              Read-Only Position
+            </span>
           </div>
         </div>
 

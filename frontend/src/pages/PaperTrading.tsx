@@ -41,20 +41,15 @@ export const PaperTrading: React.FC<PaperTradingProps> = ({
           </div>
         </div>
 
-        {onResetPaper && (
-          <button
-            onClick={() => {
-              if (window.confirm('Are you sure you want to clear all paper trades and reset virtual account to ₹1,00,000?')) {
-                onResetPaper();
-              }
-            }}
-            className="px-3 py-1.5 rounded-lg bg-surface border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-mono font-semibold transition-colors flex items-center gap-1.5"
-            title="Clear all demo trades and reset virtual capital to ₹1,00,000"
+        <div className="flex items-center gap-2">
+          <span
+            className="px-3 py-1.5 rounded-lg bg-surface border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold flex items-center gap-1.5"
+            title="Read-Only Observational Mode: Modifying or resetting paper trading balances is disabled."
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset Account &amp; Clear Demo Data
-          </button>
-        )}
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            Read-Only Terminal
+          </span>
+        </div>
       </div>
 
       {/* Account Balances Grid */}
@@ -176,19 +171,21 @@ export const PaperTrading: React.FC<PaperTradingProps> = ({
           <div className="pt-4 border-t border-border space-y-2">
             {activePos ? (
               <button
-                onClick={onCloseTrade}
-                className="w-full py-2.5 px-4 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2"
+                disabled
+                title="Read-Only Mode: Position square-off is disabled in observational mode"
+                className="w-full py-2.5 px-4 rounded-lg bg-slate-800 text-slate-500 font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2 border border-slate-700/50"
               >
-                <Square className="w-4 h-4 fill-white" />
-                Square Off Active Paper Position
+                <Square className="w-3.5 h-3.5 fill-slate-500" />
+                Active Position Locked (Read-Only Mode)
               </button>
             ) : (
               <button
-                onClick={onOpenTrade}
-                className="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2"
+                disabled
+                title="Read-Only Mode: Order execution is disabled in observational mode"
+                className="w-full py-2.5 px-4 rounded-lg bg-slate-800 text-slate-500 font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2 border border-slate-700/50"
               >
-                <Play className="w-4 h-4 fill-white" />
-                Place Simulated BUY Order ({lots} Lot)
+                <Play className="w-3.5 h-3.5 fill-slate-500" />
+                Order Execution Disabled (Read-Only Mode)
               </button>
             )}
           </div>

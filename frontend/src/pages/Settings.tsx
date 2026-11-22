@@ -751,22 +751,13 @@ export const Settings: React.FC<SettingsProps> = ({ marketStatus, onResetPaper }
           </div>
 
           <button
-            onClick={async () => {
-              if (window.confirm('Reset all demo data? This will clear all trades, orders, signals, and backtest history and restore cash to ₹1,00,000.')) {
-                try {
-                  await api.resetPaperData();
-                  if (onResetPaper) onResetPaper();
-                  const updatedEvents = await api.getSystemEvents(20);
-                  setEvents(updatedEvents);
-                } catch (e) {
-                  console.error(e);
-                }
-              }
-            }}
-            className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-semibold transition-colors flex items-center gap-2"
+            type="button"
+            disabled
+            title="Read-Only Mode: Clearing historical data is strictly restricted"
+            className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700/60 text-slate-500 text-xs font-mono font-semibold cursor-not-allowed flex items-center gap-2"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Clear All Demo Data &amp; Reset System
+            <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
+            Reset Restricted (Read-Only Terminal)
           </button>
         </div>
       </div>
