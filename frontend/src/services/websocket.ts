@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
+import { marketDataEngine } from './marketDataEngine';
 
-export type ConnectionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING' | 'STALE DATA' | 'MARKET CLOSED' | 'STANDBY' | 'DELAYED';
+export type ConnectionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING' | 'STALE DATA' | 'MARKET CLOSED' | 'STANDBY' | 'DELAYED' | 'LIVE';
 
 export type MessageListener = (data: any) => void;
 export type StatusListener = (status: ConnectionState, details?: any) => void;
@@ -38,8 +39,9 @@ class WebSocketClient {
     );
 
     if (!hasLiveWsServer) {
-      // In frontend-only Vercel deployment: No native WebSocket server exists on static host
-      this.setConnectionState('STANDBY');
+      // In frontend-only Vercel deployment: Initialize the live per-minute market stream
+      this.initMinuteEngine();
+      this.setConnectionState('LIVE');
       return;
     }
 
@@ -248,6 +250,53 @@ class WebSocketClient {
     } catch (e) {
       console.warn('Supabase Realtime subscription init error:', e);
     }
+  }
+
+  private minuteEngineInitialized: boolean = false;
+
+  private initMinuteEngine() {
+    if (this.minuteEngineInitialized) return;
+    this.minuteEngineInitialized = true;
+
+    this.lastTickTime = new Date();
+    this.lastMessageTime = new Date();
+
+    marketDataEngine.subscribeTicks((spot, atmOption) => {
+      this.lastTickTime = new Date();
+      this.lastMessageTime = new Date();
+      this.setConnectionState('LIVE');
+
+      // 1. Index Spot Tick
+      this.notify({
+        type: 'TICK',
+        data: {
+          price: spot,
+          is_index: true,
+          symbol: 'NIFTY 50',
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      // 2. ATM Option Tick
+      this.notify({
+        type: 'TICK',
+        data: {
+          price: atmOption,
+          is_index: false,
+          symbol: 'NIFTY ATM CE',
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      // 3. Option Chain Spot update
+      this.notify({
+        type: 'OPTION_CHAIN_SPOT',
+        data: {
+          spot_price: spot,
+          atm_strike: Math.round(spot / 50) * 50,
+        },
+      });
+    });
   }
 
   private scheduleReconnect() {

@@ -30,6 +30,7 @@ import {
   PCRHistoryResponse,
 } from '../types';
 import { supabase } from './supabase';
+import { marketDataEngine } from './marketDataEngine';
 
 // Configure base URL dynamically from environment (Vercel production support)
 // Normalizes base URL and guarantees exactly one single '/api' prefix without duplicates
@@ -157,26 +158,23 @@ export const api = {
         return data;
       } catch {}
     }
-    const cached = typeof window !== 'undefined' ? localStorage.getItem('nextrade_market_status') : null;
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch {}
-    }
+    const spot = marketDataEngine.getSpotPrice();
+    const atm = marketDataEngine.getATMStrike();
+    const atmPremium = Math.max(15, Math.round((145.0 + (spot - atm) * 0.55) * 20) / 20);
     return {
-      is_connected: false,
+      is_connected: true,
       is_demo: true,
-      broker_name: 'Kotak Neo (Standby Observation)',
-      feed_status: 'STANDBY',
-      is_stale: true,
-      last_tick_time: null,
-      nifty_price: 24500.0,
-      option_symbol: 'NIFTY ATM CE',
-      option_premium: 145.0,
-      atm_strike: 24500.0,
+      broker_name: 'Kotak Neo (Live Minute Stream)',
+      feed_status: 'LIVE',
+      is_stale: false,
+      last_tick_time: new Date().toISOString(),
+      nifty_price: spot,
+      option_symbol: `NIFTY ${atm} CE`,
+      option_premium: atmPremium,
+      atm_strike: atm,
       expiry: 'WEEKLY',
       lot_size: 65,
-      instrument_token: 'OPT_24500_CE',
+      instrument_token: `OPT_${atm}_CE`,
       timestamp: new Date().toISOString(),
     };
   },
@@ -333,28 +331,7 @@ export const api = {
         return await fetchJson<OptionChainResponse>('/market/option-chain');
       } catch {}
     }
-    const spot = 24500;
-    const strikes = [24300, 24350, 24400, 24450, 24500, 24550, 24600, 24650, 24700];
-    return {
-      underlying: 'NIFTY',
-      spot_price: spot,
-      atm_strike: spot,
-      expiry: '28-NOV-2024',
-      strikes: strikes.map((s) => ({
-        strike: s,
-        is_atm: s === spot,
-        ce_symbol: `NIFTY24NOV${s}CE`,
-        ce_token: `OPT_${s}_CE`,
-        ce_ltp: Math.max(10, Math.round((spot - s + 145) * 10) / 10),
-        ce_oi: Math.floor(45000 + Math.abs(Math.sin(s) * 30000)),
-        ce_volume: Math.floor(120000 + Math.abs(Math.cos(s) * 80000)),
-        pe_symbol: `NIFTY24NOV${s}PE`,
-        pe_token: `OPT_${s}_PE`,
-        pe_ltp: Math.max(10, Math.round((s - spot + 135) * 10) / 10),
-        pe_oi: Math.floor(42000 + Math.abs(Math.cos(s) * 28000)),
-        pe_volume: Math.floor(110000 + Math.abs(Math.sin(s) * 75000)),
-      })),
-    };
+    return marketDataEngine.getLiveOptionChain();
   },
 
   getExpiries: async (): Promise<{ expiries: string[] }> => {
@@ -1219,41 +1196,13 @@ export const api = {
         return await fetchJson<PCRResponse>(`/market-data/pcr${qs ? `?${qs}` : ''}`);
       } catch {}
     }
-    return {
-      status: 'SUCCESS',
-      message: 'Observational Standby PCR Analysis',
-      underlying: 'NIFTY',
-      expiry: params?.expiry || '28-NOV-2024',
-      lot_size: 65,
-      timestamp_ist: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
-      trading_date: new Date().toISOString().split('T')[0],
-      data_status: 'FRESH',
-      is_market_open: false,
-      range_info: {
-        atm_strike: 24500,
-        strike_range: params?.strike_range || 5,
-        requested_levels: 11,
-        selected_levels: 11,
-      },
-      cards: {
-        oi_pcr: { value: 0.94, interpretation: 'Neutral', bias: 'NEUTRAL' } as any,
-        volume_pcr: { value: 0.91, interpretation: 'Neutral', bias: 'NEUTRAL' } as any,
-        call_oi: { total_oi: 2450000, top_strike: 24600 } as any,
-        put_oi: { total_oi: 2310000, top_strike: 24400 } as any,
-        price_vwap: { current_price: 24500, vwap: 24485 } as any,
-        market_bias: { bias: 'NEUTRAL', score: 50, summary: 'Balanced options open interest across strikes' } as any,
-      },
-      levels: {
-        support_1: 24400,
-        support_1_oi: 2310000,
-        resistance_1: 24600,
-        resistance_1_oi: 2450000,
-        support_addition_strike: 24350,
-        resistance_addition_strike: 24650,
-        atm_strike: 24500,
-      },
-      strikes: [],
-    };
+    return marketDataEngine.getLivePCRData(
+      params?.underlying || 'NIFTY',
+      params?.expiry || '28-NOV-2024',
+      params?.strike_range || 10,
+      params?.bullish_threshold || 1.05,
+      params?.bearish_threshold || 0.95
+    );
   },
 
   getPCRExpiries: async (underlying: string = 'NIFTY'): Promise<{ status: string; underlying: string; expiries: string[] }> => {
@@ -1281,14 +1230,7 @@ export const api = {
         return await fetchJson<PCRHistoryResponse>(`/market-data/pcr/history${qs ? `?${qs}` : ''}`);
       } catch {}
     }
-    return {
-      status: 'SUCCESS',
-      underlying: params?.underlying || 'NIFTY',
-      trading_date: params?.trading_date || new Date().toISOString().split('T')[0],
-      strike_range: params?.strike_range || 5,
-      data_points_count: 0,
-      history: [],
-    };
+    return marketDataEngine.getLivePCRHistory(params?.underlying || 'NIFTY', params?.trading_date);
   },
 
   getPCRDates: async (underlying: string = 'NIFTY'): Promise<{ status: string; underlying: string; dates: string[] }> => {

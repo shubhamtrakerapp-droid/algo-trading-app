@@ -38,6 +38,10 @@ export const OptionChain: React.FC<OptionChainProps> = ({ onContractSelected }) 
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 60000); // 1-minute live fetcher
+    return () => clearInterval(interval);
   }, [loadData]);
 
   // Real-time WebSocket listener
