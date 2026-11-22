@@ -18,6 +18,11 @@ class MarketDataEngine {
   constructor() {
     this.initHistory();
     this.startMinuteEngine();
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        this.stepMinuteUpdate();
+      }, 50);
+    }
   }
 
   private initHistory() {
@@ -384,6 +389,13 @@ class MarketDataEngine {
 
   public subscribeTicks(listener: (spot: number, atmOption: number) => void): () => void {
     this.tickListeners.add(listener);
+    const atm = this.getATMStrike();
+    const atmCePrice = Math.max(15, Math.round((145.0 + (this.currentSpotPrice - atm) * 0.55) * 20) / 20);
+    try {
+      listener(this.currentSpotPrice, atmCePrice);
+    } catch (e) {
+      console.error('Error invoking tick listener immediately:', e);
+    }
     return () => {
       this.tickListeners.delete(listener);
     };

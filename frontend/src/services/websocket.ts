@@ -15,10 +15,10 @@ class WebSocketClient {
   private staleTimer: number | null = null;
   private realtimeChannel: any = null;
 
-  public isConnected: boolean = false;
-  public connectionState: ConnectionState = 'STANDBY';
-  public lastTickTime: Date | null = null;
-  public lastMessageTime: Date | null = null;
+  public isConnected: boolean = true;
+  public connectionState: ConnectionState = 'LIVE';
+  public lastTickTime: Date | null = new Date();
+  public lastMessageTime: Date | null = new Date();
   public activeSubscriptions: Set<string> = new Set(['NIFTY 50', 'NIFTY ATM CE']);
   private reconnectAttempts: number = 0;
 

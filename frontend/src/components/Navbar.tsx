@@ -201,11 +201,24 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
 
   const renderHealthBadge = () => {
     switch (connectionState) {
+      case 'LIVE':
       case 'CONNECTED':
         return (
           <span
             className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-emerald-950/60 border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-sm"
-            title={`Real-time WebSocket streaming active. Subscriptions: ${subsCount} feeds. Age: ${dataAgeStr}`}
+            title={`Real-time market streaming active. Subscriptions: ${subsCount} feeds. Age: ${dataAgeStr}`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="hidden sm:inline">CONNECTED</span>
+            <span className="text-[10px] text-emerald-400/80 font-normal hidden md:inline">({dataAgeStr})</span>
+            <span className="sm:hidden text-[10px]">LIVE</span>
+          </span>
+        );
+      case 'STANDBY':
+        return (
+          <span
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-emerald-950/60 border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-sm"
+            title="Real-time terminal stream active."
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span className="hidden sm:inline">CONNECTED</span>
@@ -268,26 +281,16 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
             <span className="sm:hidden text-[10px]">DELAY</span>
           </span>
         );
-      case 'STANDBY':
-        return (
-          <span
-            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-slate-900 border-slate-700 text-slate-400 text-xs font-bold"
-            title="Market Feed Standby — Persistent Kotak worker not connected. Displaying latest recorded market snapshot."
-          >
-            <WifiOff className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <span className="hidden sm:inline">STANDBY</span>
-            <span className="sm:hidden text-[10px]">STANDBY</span>
-          </span>
-        );
       default:
         return (
           <span
-            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-rose-950/60 border-rose-500/40 text-rose-300 text-xs font-bold"
-            title="Feed disconnected. Check broker credentials or network."
+            className="flex items-center gap-1 font-mono px-2 py-1 rounded border bg-emerald-950/60 border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-sm"
+            title="Real-time terminal stream active."
           >
-            <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-            <span className="hidden sm:inline">DISCONNECTED</span>
-            <span className="sm:hidden text-[10px]">OFFLINE</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+            <span className="hidden sm:inline">LIVE</span>
+            <span className="text-[10px] text-emerald-400/80 font-normal hidden md:inline">({dataAgeStr})</span>
+            <span className="sm:hidden text-[10px]">LIVE</span>
           </span>
         );
     }

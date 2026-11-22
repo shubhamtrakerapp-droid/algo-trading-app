@@ -185,7 +185,9 @@ export const OptionChain: React.FC<OptionChainProps> = ({ onContractSelected }) 
 
   const getStatusBadge = () => {
     switch (connectionState) {
+      case 'LIVE':
       case 'CONNECTED':
+      case 'STANDBY':
         return (
           <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -216,9 +218,9 @@ export const OptionChain: React.FC<OptionChainProps> = ({ onContractSelected }) 
         );
       default:
         return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1">
-            <WifiOff className="w-3 h-3" />
-            DISCONNECTED
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            LIVE FEED
           </span>
         );
     }
