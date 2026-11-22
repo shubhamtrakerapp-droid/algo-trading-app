@@ -136,90 +136,20 @@ async def login(
 
 
 # =============================================================================
-# 2. SIGNUP (Authorized users only, strict 2-user private boundary)
+# 2. SIGNUP (Permanently Disabled - Private Invite-Only Terminal)
 # =============================================================================
 @router.post("/signup")
 async def signup(
     req: SignupRequest,
-    db: AsyncSession = Depends(get_db)
 ):
-    clean_email = req.email.strip().lower()
-
-    # Enforce strict 2-user allowlist check
-    authorized = await is_email_authorized(clean_email, db)
-    if not authorized:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Registration forbidden: Email '{clean_email}' is not authorized. This private platform only permits pre-authorized users."
-        )
-
-    if len(req.password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long."
-        )
-
-    # Check if user already exists
-    stmt = select(User).where(func.lower(User.email) == clean_email)
-    res = await db.execute(stmt)
-    existing_user = res.scalars().first()
-
-    if existing_user and existing_user.password_hash:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account already exists for this email. Please sign in."
-        )
-
-    p_hash, p_salt = hash_password(req.password)
-    username = (req.username or clean_email.split("@")[0]).strip()
-
-    # Query role from authorized_users table
-    auth_stmt = select(AuthorizedUser).where(func.lower(AuthorizedUser.email) == clean_email)
-    auth_res = await db.execute(auth_stmt)
-    auth_rec = auth_res.scalars().first()
-    role = auth_rec.role if auth_rec else "trader"
-
-    if existing_user:
-        existing_user.password_hash = p_hash
-        existing_user.password_salt = p_salt
-        existing_user.role = role
-        existing_user.username = username
-        existing_user.is_active = True
-        user = existing_user
-    else:
-        user = User(
-            username=username,
-            email=clean_email,
-            password_hash=p_hash,
-            password_salt=p_salt,
-            role=role,
-            is_active=True,
-        )
-        db.add(user)
-
-    await db.commit()
-    await db.refresh(user)
-
-    # Issue JWT token
-    token_data = {
-        "sub": user.email,
-        "email": user.email,
-        "user_id": user.id,
-        "role": user.role,
-        "username": user.username,
-    }
-    access_token = create_access_token(token_data)
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "username": user.username,
-            "role": user.role,
-        }
-    }
+    """
+    Public registration is permanently disabled.
+    NEXTRADE operates as a private, invite-only trading terminal.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Registration is disabled. NEXTRADE is a private invite-only terminal. Please contact the administrator."
+    )
 
 
 # =============================================================================

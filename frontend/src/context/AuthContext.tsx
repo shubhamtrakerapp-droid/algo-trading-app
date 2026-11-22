@@ -157,51 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(data.user);
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, username?: string) => {
-    const cleanEmail = email.trim().toLowerCase();
-
-    // 1. Direct Supabase Auth Signup
-    if (supabase) {
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-        options: {
-          data: {
-            username: username || cleanEmail.split('@')[0],
-            role: 'trader',
-          },
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Registration failed.');
-      }
-
-      if (data.session?.access_token) {
-        setAuthToken(data.session.access_token);
-        setSessionToken(data.session.access_token);
-        setUser({
-          id: 1,
-          email: cleanEmail,
-          username: username || cleanEmail.split('@')[0],
-          role: 'trader',
-        });
-        return;
-      } else if (data.user) {
-        // Confirmation email may be required depending on Supabase settings
-        return;
-      }
-    }
-
-    // 2. Fallback to backend signup
-    const data = await api.authSignup({ email: cleanEmail, password, username });
-    if (!data.access_token) {
-      throw new Error('Registration failed: No access token received.');
-    }
-
-    setAuthToken(data.access_token);
-    setSessionToken(data.access_token);
-    setUser(data.user);
+  const signup = useCallback(async (_email: string, _password: string, _username?: string) => {
+    throw new Error('Registration is disabled. NEXTRADE is a private invite-only terminal. Please contact the administrator.');
   }, []);
 
   const logout = useCallback(async () => {

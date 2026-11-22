@@ -139,40 +139,46 @@ async def test_allowlist_strict_2_user_limit():
 
 @pytest.mark.asyncio
 async def test_api_auth_flow():
-    """E2E API test for signup, login, get_me, rate limiting, and logout."""
+    """E2E API test for disabled signup, login, get_me, rate limiting, and logout."""
     await init_db()
     from backend.app.database import AsyncSessionLocal
     from backend.app.models.models import User
     from sqlalchemy import select, func
 
-    # Ensure clean test state for admin user
+    # Ensure admin user has known test password without deleting existing account
     async with AsyncSessionLocal() as session:
         stmt = select(User).where(func.lower(User.email) == "admin@nextrade.com")
         res = await session.execute(stmt)
         u = res.scalars().first()
+        p_hash, p_salt = hash_password("ValidMasterPassword2026!")
         if u:
-            await session.delete(u)
-            await session.commit()
+            u.password_hash = p_hash
+            u.password_salt = p_salt
+            u.is_active = True
+        else:
+            u = User(
+                username="NextradeAdmin",
+                email="admin@nextrade.com",
+                password_hash=p_hash,
+                password_salt=p_salt,
+                role="owner",
+                is_active=True,
+            )
+            session.add(u)
+        await session.commit()
 
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # 1. Signup with unauthorized email -> 403 Forbidden
+        # 1. Signup with unauthorized email -> 403 Forbidden (Registration Disabled)
         res = await client.post(
             "/api/auth/signup",
             json={"email": "attacker@evil.com", "password": "Password123!"}
         )
         assert res.status_code == 403
-        assert "not authorized" in res.json()["detail"].lower()
+        assert "registration is disabled" in res.json()["detail"].lower()
 
-        # 2. Signup with authorized email but password < 8 chars -> 400 Bad Request
-        res = await client.post(
-            "/api/auth/signup",
-            json={"email": "admin@nextrade.com", "password": "short"}
-        )
-        assert res.status_code == 400
-
-        # 3. Successful signup for authorized user
+        # 2. Signup with authorized email -> 403 Forbidden (Registration Disabled)
         res = await client.post(
             "/api/auth/signup",
             json={
@@ -181,22 +187,17 @@ async def test_api_auth_flow():
                 "username": "NextradeAdmin"
             }
         )
-        # Should be 200 or 400 if already created in earlier test run
-        if res.status_code == 200:
-            data = res.json()
-            assert "access_token" in data
-            assert data["user"]["email"] == "admin@nextrade.com"
-        else:
-            assert res.status_code == 400
+        assert res.status_code == 403
+        assert "registration is disabled" in res.json()["detail"].lower()
 
-        # 4. Login with wrong password -> 401 Unauthorized
+        # 3. Login with wrong password -> 401 Unauthorized
         res = await client.post(
             "/api/auth/login",
             json={"email": "admin@nextrade.com", "password": "WrongPassword!"}
         )
         assert res.status_code == 401
 
-        # 5. Login with correct password -> 200 OK + access_token
+        # 4. Login with correct password -> 200 OK + access_token
         res = await client.post(
             "/api/auth/login",
             json={"email": "admin@nextrade.com", "password": "ValidMasterPassword2026!"}

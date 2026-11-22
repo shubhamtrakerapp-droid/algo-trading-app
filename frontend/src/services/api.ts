@@ -556,11 +556,9 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  authSignup: (data: { email: string; password: string; username?: string }) =>
-    fetchJson<{ access_token: string; token_type: string; user: any }>('/auth/signup', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  authSignup: (_data: { email: string; password: string; username?: string }): Promise<any> => {
+    return Promise.reject(new Error('Registration is disabled. NEXTRADE is a private invite-only terminal.'));
+  },
 
   authLogout: () =>
     fetchJson<{ status: string; message: string }>('/auth/logout', {
