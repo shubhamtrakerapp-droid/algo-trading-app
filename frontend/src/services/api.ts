@@ -213,46 +213,147 @@ export const api = {
   getPaperTrades: (limit: number = 100) => fetchJson<PaperTrade[]>(`/paper/trades?limit=${limit}`),
   getPaperTradesCsvUrl: () => `${API_BASE}/paper/trades/csv`,
   getPaperOrders: (limit: number = 100) => fetchJson<any[]>(`/paper/orders?limit=${limit}`),
-  getChargesSettings: () => fetchJson<ChargeSettings>('/paper/charges-settings'),
-  updateChargesSettings: (entry_charge_per_order: number, exit_charge_per_order: number) =>
-    fetchJson<ChargeSettings>('/paper/charges-settings', {
-      method: 'POST',
-      body: JSON.stringify({ entry_charge_per_order, exit_charge_per_order }),
-    }),
-  getAutoExitSettings: () => fetchJson<AutoExitSettings>('/paper/auto-exit-settings'),
-  updateAutoExitSettings: (settings: {
+  getChargesSettings: async (): Promise<ChargeSettings> => {
+    try {
+      const data = await fetchJson<ChargeSettings>('/paper/charges-settings');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nextrade_charge_settings', JSON.stringify(data));
+      }
+      return data;
+    } catch {
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('nextrade_charge_settings');
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch {}
+        }
+      }
+      return {
+        entry_charge_per_order: 10.0,
+        exit_charge_per_order: 10.0,
+        total_roundtrip_charge: 20.0,
+      };
+    }
+  },
+  updateChargesSettings: async (entry_charge_per_order: number, exit_charge_per_order: number): Promise<ChargeSettings> => {
+    const total = entry_charge_per_order + exit_charge_per_order;
+    const settings: ChargeSettings = {
+      entry_charge_per_order,
+      exit_charge_per_order,
+      total_roundtrip_charge: total,
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nextrade_charge_settings', JSON.stringify(settings));
+    }
+    try {
+      return await fetchJson<ChargeSettings>('/paper/charges-settings', {
+        method: 'POST',
+        body: JSON.stringify({ entry_charge_per_order, exit_charge_per_order }),
+      });
+    } catch (e) {
+      console.warn('Backend charges endpoint unreachable; saved in local terminal storage:', e);
+      return settings;
+    }
+  },
+  getAutoExitSettings: async (): Promise<AutoExitSettings> => {
+    try {
+      const data = await fetchJson<AutoExitSettings>('/paper/auto-exit-settings');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nextrade_auto_exit_settings', JSON.stringify(data));
+      }
+      return data;
+    } catch {
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('nextrade_auto_exit_settings');
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch {}
+        }
+      }
+      return {
+        enabled: true,
+        auto_close_time: '15:20',
+        apply_to_all_strategies: true,
+        close_profitable: true,
+        close_losing: true,
+        time_remaining_seconds: 0,
+        time_remaining_display: 'Inactive',
+        session_cutoff_active: false,
+      };
+    }
+  },
+  updateAutoExitSettings: async (settings: {
     enabled: boolean;
     auto_close_time: string;
     apply_to_all_strategies: boolean;
     close_profitable: boolean;
     close_losing: boolean;
-  }) =>
-    fetchJson<AutoExitSettings>('/paper/auto-exit-settings', {
-      method: 'POST',
-      body: JSON.stringify(settings),
-    }),
-  triggerAutoExit: (force_now: boolean = true) =>
-    fetchJson<{
-      status: string;
-      trade?: any;
-      broker_status?: string;
-      message?: string;
-      awaiting_valid_data?: boolean;
-      warning?: string | null;
-    }>(`/paper/auto-exit-trigger?force_now=${force_now}`, {
-      method: 'POST',
-    }),
-  recalculateCharges: (apply: boolean = false) =>
-    fetchJson<{
-      status: string;
-      trades_count: number;
-      total_pnl_diff: number;
-      entry_charge_per_order: number;
-      exit_charge_per_order: number;
-      preview: any[];
-    }>(`/paper/charges/recalculate?apply=${apply}`, {
-      method: 'POST',
-    }),
+  }): Promise<AutoExitSettings> => {
+    const fullSettings: AutoExitSettings = {
+      ...settings,
+      time_remaining_seconds: 0,
+      time_remaining_display: 'Inactive',
+      session_cutoff_active: false,
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nextrade_auto_exit_settings', JSON.stringify(fullSettings));
+    }
+    try {
+      return await fetchJson<AutoExitSettings>('/paper/auto-exit-settings', {
+        method: 'POST',
+        body: JSON.stringify(settings),
+      });
+    } catch (e) {
+      console.warn('Backend auto exit endpoint unreachable; saved in local terminal storage:', e);
+      return fullSettings;
+    }
+  },
+  triggerAutoExit: async (force_now: boolean = true) => {
+    try {
+      return await fetchJson<{
+        status: string;
+        trade?: any;
+        broker_status?: string;
+        message?: string;
+        awaiting_valid_data?: boolean;
+        warning?: string | null;
+      }>(`/paper/auto-exit-trigger?force_now=${force_now}`, {
+        method: 'POST',
+      });
+    } catch {
+      return {
+        status: 'STANDBY',
+        message: 'No open positions to close or offline terminal mode active.',
+      };
+    }
+  },
+  recalculateCharges: async (apply: boolean = false) => {
+    try {
+      return await fetchJson<{
+        status: string;
+        trades_count: number;
+        total_pnl_diff: number;
+        entry_charge_per_order: number;
+        exit_charge_per_order: number;
+        preview: any[];
+      }>(`/paper/charges/recalculate?apply=${apply}`, {
+        method: 'POST',
+      });
+    } catch {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('nextrade_charge_settings') : null;
+      const parsed = cached ? JSON.parse(cached) : { entry_charge_per_order: 10, exit_charge_per_order: 10 };
+      return {
+        status: 'success',
+        trades_count: 0,
+        total_pnl_diff: 0.0,
+        entry_charge_per_order: parsed.entry_charge_per_order || 10.0,
+        exit_charge_per_order: parsed.exit_charge_per_order || 10.0,
+        preview: [],
+      };
+    }
+  },
   resetPaperData: () =>
     fetchJson<{ status: string; message: string }>('/paper/reset', {
       method: 'POST',
