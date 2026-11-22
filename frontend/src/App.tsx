@@ -15,8 +15,7 @@ import { Settings } from './pages/Settings';
 import { AIMicroScalper } from './pages/AIMicroScalper';
 import { PCRAnalysis } from './pages/PCRAnalysis';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { Login } from './pages/Login';
+import { AuthProvider } from './context/AuthContext';
 
 import { MarketStatus, PaperAccountStatus, StrategyStatus, Candle } from './types';
 import { api } from './services/api';
@@ -402,31 +401,10 @@ const MainApp: React.FC = () => {
   );
 };
 
-const AuthGate: React.FC = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen w-full bg-slate-950 flex flex-col items-center justify-center space-y-4">
-        <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-mono tracking-widest text-slate-400 uppercase">
-          Initializing NEXTRADE Terminal...
-        </span>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Login />;
-  }
-
-  return <MainApp />;
-};
-
 export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AuthGate />
+      <MainApp />
     </AuthProvider>
   );
 };

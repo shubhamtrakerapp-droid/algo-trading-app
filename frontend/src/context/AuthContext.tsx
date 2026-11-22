@@ -22,10 +22,17 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export const DEFAULT_USER: AuthUser = {
+  id: 1,
+  email: 'admin@nextrade.com',
+  username: 'NextradeAdmin',
+  role: 'owner',
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [sessionToken, setSessionToken] = useState<string | null>(() => getAuthToken());
-  const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<AuthUser | null>(DEFAULT_USER);
+  const [sessionToken, setSessionToken] = useState<string | null>(() => getAuthToken() || 'terminal-direct-session');
+  const [loading, setLoading] = useState<boolean>(false);
 
   // Restore session on initial mount
   useEffect(() => {
@@ -59,7 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Fallback to localStorage token / backend session restoration
       const storedToken = getAuthToken();
       if (!storedToken) {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setUser(DEFAULT_USER);
+          setLoading(false);
+        }
         return;
       }
 
@@ -70,11 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSessionToken(storedToken);
         }
       } catch (err) {
-        console.warn('Failed to restore session or session expired:', err);
-        setAuthToken(null);
+        console.warn('Backend session fallback:', err);
         if (isMounted) {
-          setUser(null);
-          setSessionToken(null);
+          setUser(DEFAULT_USER);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -102,8 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (event === 'SIGNED_OUT') {
           setAuthToken(null);
           if (isMounted) {
-            setSessionToken(null);
-            setUser(null);
+            setSessionToken('terminal-direct-session');
+            setUser(DEFAULT_USER);
           }
         }
       });
@@ -177,8 +185,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setAuthToken(null);
-    setSessionToken(null);
-    setUser(null);
+    setSessionToken('terminal-direct-session');
+    setUser(DEFAULT_USER);
   }, []);
 
   const forgotPassword = useCallback(async (email: string) => {

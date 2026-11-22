@@ -8,7 +8,6 @@ import {
   Menu,
   Activity,
   AlertTriangle,
-  LogOut,
   Users,
   Shield,
   X,
@@ -28,7 +27,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSidebar }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState<string>(formatIST(new Date()));
   const [activeStrategy, setActiveStrategy] = useState<StrategyType>('AI_MICRO_SCALPER_V1');
   const [connectionState, setConnectionState] = useState<ConnectionState>('CONNECTING');
@@ -388,31 +387,10 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
           {user && (
             <div className="flex items-center space-x-2 pl-1 border-l border-border/60">
               {/* User Identity Pill */}
-              <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="font-medium truncate max-w-[140px]">{user.username || user.email.split('@')[0]}</span>
               </div>
-
-              {/* Slot Management Button */}
-              <button
-                type="button"
-                onClick={() => setIsSlotModalOpen(true)}
-                title="Manage 2 Authorized User Accounts"
-                className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-colors"
-              >
-                <Users className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="hidden xl:inline">Access</span>
-              </button>
-
-              {/* Logout Button */}
-              <button
-                type="button"
-                onClick={logout}
-                title="Sign out of NEXTRADE"
-                className="p-1.5 rounded bg-slate-900 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 transition-colors"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
             </div>
           )}
         </div>
