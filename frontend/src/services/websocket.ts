@@ -29,25 +29,30 @@ class WebSocketClient {
       return;
     }
 
-    const envWsUrl = import.meta.env.VITE_WS_URL;
+    const envWsUrl = (import.meta.env.VITE_WS_URL || '').trim();
+    const backendBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+
+    // Only attempt native TCP WebSocket if an explicit WebSocket URL or dedicated non-Vercel backend is specified
+    const hasLiveWsServer = Boolean(
+      envWsUrl || (backendBase && !backendBase.includes('vercel.app'))
+    );
+
+    if (!hasLiveWsServer) {
+      // In frontend-only Vercel deployment: No native WebSocket server exists on static host
+      this.setConnectionState('STANDBY');
+      return;
+    }
+
     let wsUrl = envWsUrl;
+    if (!wsUrl && backendBase) {
+      const wsProto = backendBase.startsWith('https://') ? 'wss://' : 'ws://';
+      const wsHost = backendBase.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+      wsUrl = `${wsProto}${wsHost}/ws`;
+    }
+
     if (!wsUrl) {
-      const backendBase = import.meta.env.VITE_API_BASE_URL;
-      if (backendBase) {
-        const wsProto = backendBase.startsWith('https://') ? 'wss://' : 'ws://';
-        const wsHost = backendBase.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-        wsUrl = `${wsProto}${wsHost}/ws`;
-      } else {
-        const isVercel = typeof window !== 'undefined' && window.location.host.includes('vercel.app');
-        if (isVercel) {
-          // Frontend-only Vercel deployment: No local WebSocket server exists on static Vercel host
-          this.setConnectionState('STANDBY');
-          return;
-        }
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        wsUrl = `${protocol}//${host}/ws`;
-      }
+      this.setConnectionState('STANDBY');
+      return;
     }
 
     this.setConnectionState(this.reconnectAttempts > 0 ? 'RECONNECTING' : 'CONNECTING');
@@ -247,6 +252,14 @@ class WebSocketClient {
 
   private scheduleReconnect() {
     if (this.reconnectTimeout) return;
+
+    const envWsUrl = (import.meta.env.VITE_WS_URL || '').trim();
+    const backendBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+    if (!envWsUrl && (!backendBase || backendBase.includes('vercel.app'))) {
+      this.setConnectionState('STANDBY');
+      return;
+    }
+
     this.reconnectAttempts += 1;
     if (this.reconnectAttempts > 4) {
       // Switch to standby mode if no persistent backend WebSocket exists
