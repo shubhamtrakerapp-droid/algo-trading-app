@@ -3,26 +3,23 @@ import { useAuth } from '../context/AuthContext';
 import {
   Lock,
   Mail,
-  User as UserIcon,
   Eye,
   EyeOff,
   ShieldAlert,
-  ShieldCheck,
   Zap,
   ArrowRight,
   KeyRound,
   CheckCircle2,
-  AlertCircle,
   RefreshCw,
+  ArrowLeft,
 } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { login, signup, forgotPassword, resetPassword } = useAuth();
+  const { login, forgotPassword, resetPassword } = useAuth();
 
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'reset'>('signin');
+  const [mode, setMode] = useState<'signin' | 'forgot' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -54,33 +51,11 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    clearMessages();
-    if (!email || !password) {
-      setError('Email and password are required.');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await signup(email.trim().toLowerCase(), password, username.trim() || undefined);
-    } catch (err: any) {
-      setError(err?.message || 'Registration failed. Only pre-authorized emails can sign up.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
     if (!email) {
-      setError('Please enter your authorized email address.');
+      setError('Please enter your email address.');
       return;
     }
 
@@ -149,8 +124,7 @@ export const Login: React.FC = () => {
           </h1>
           <div className="mt-2 flex items-center justify-center gap-2">
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Private 2-User Access
+              Private Terminal
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               Paper Trading Only
@@ -160,52 +134,6 @@ export const Login: React.FC = () => {
 
         {/* Card Box */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
-          {/* Navigation Mode Tabs */}
-          <div className="flex rounded-lg bg-slate-950 p-1 mb-6 border border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('signin');
-                clearMessages();
-              }}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                mode === 'signin'
-                  ? 'bg-slate-800 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('signup');
-                clearMessages();
-              }}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                mode === 'signup'
-                  ? 'bg-slate-800 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Sign Up
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('forgot');
-                clearMessages();
-              }}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                mode === 'forgot' || mode === 'reset'
-                  ? 'bg-slate-800 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Reset
-            </button>
-          </div>
-
           {/* Feedback Messages */}
           {error && (
             <div className="mb-5 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-rose-300 text-xs leading-relaxed animate-fade-in">
@@ -226,7 +154,7 @@ export const Login: React.FC = () => {
             <form onSubmit={handleSignIn} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Authorized Email
+                  Email Address
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -234,10 +162,10 @@ export const Login: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="authorized@nextrade.com"
+                    placeholder="name@example.com"
                     required
                     autoFocus
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                   />
                 </div>
               </div>
@@ -253,7 +181,7 @@ export const Login: React.FC = () => {
                     }}
                     className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
                   >
-                    Forgot?
+                    Forgot Password?
                   </button>
                 </div>
                 <div className="relative">
@@ -264,7 +192,7 @@ export const Login: React.FC = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full pl-9 pr-10 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                   />
                   <button
                     type="button"
@@ -296,101 +224,31 @@ export const Login: React.FC = () => {
             </form>
           )}
 
-          {/* Form: Sign Up */}
-          {mode === 'signup' && (
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300">
-                Notice: Registration is restricted to the two pre-authorized user accounts.
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Authorized Email
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="authorized@nextrade.com"
-                    required
-                    autoFocus
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Username (Optional)
-                </label>
-                <div className="relative">
-                  <UserIcon className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="trader1"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Password (min 8 characters)
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full pl-9 pr-10 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  <>
-                    Create Authorized Account
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
           {/* Form: Forgot Password */}
           {mode === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-slate-200">Reset Password</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signin');
+                    clearMessages();
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Sign In
+                </button>
+              </div>
+
               <p className="text-xs text-slate-400">
-                Enter your authorized email to generate a password reset request.
+                Enter your email to receive password reset instructions.
               </p>
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Authorized Email
+                  Email Address
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -398,7 +256,7 @@ export const Login: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="authorized@nextrade.com"
+                    placeholder="name@example.com"
                     required
                     autoFocus
                     className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
@@ -419,7 +277,7 @@ export const Login: React.FC = () => {
                 ) : (
                   <>
                     <KeyRound className="w-4 h-4 text-emerald-400" />
-                    Request Password Reset
+                    Send Reset Link
                   </>
                 )}
               </button>
@@ -429,6 +287,21 @@ export const Login: React.FC = () => {
           {/* Form: Reset Password (with Token) */}
           {mode === 'reset' && (
             <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-slate-200">Set New Password</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signin');
+                    clearMessages();
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Sign In
+                </button>
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
                   Reset Token
@@ -488,7 +361,7 @@ export const Login: React.FC = () => {
         {/* Security Footer Note */}
         <div className="mt-6 text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
           <Lock className="w-3.5 h-3.5 text-slate-600" />
-          <span>PBKDF2-HMAC-SHA256 • JWT Session Validation • Allowlist Protected</span>
+          <span>Direct Secure Sign-In • Session Protected</span>
         </div>
       </div>
     </div>

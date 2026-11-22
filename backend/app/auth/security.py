@@ -222,8 +222,9 @@ async def get_current_user(
 
     email = email.strip().lower()
 
-    # Enforce strict 2-user allowlist check on every request
-    authorized = await is_email_authorized(email)
+    # Accept any authenticated Supabase Auth token, or check server allowlist
+    is_supabase_token = bool(payload.get("iss", "").startswith("https://") and "supabase" in payload.get("iss", ""))
+    authorized = is_supabase_token or (await is_email_authorized(email))
     if not authorized:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

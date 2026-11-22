@@ -6,7 +6,7 @@ export interface AuthUser {
   id: number;
   email: string;
   username: string;
-  role: string;
+  role?: string;
 }
 
 export interface AuthContextType {
@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (email: string, password: string) => {
     const cleanEmail = email.trim().toLowerCase();
 
-    // 1. Direct Supabase Auth (Client-side, Fast, Resilient)
+    // 1. Direct Supabase Auth (Client-side, Fast, Direct)
     if (supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
@@ -129,30 +129,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        throw new Error(error.message || 'Authentication failed.');
+        throw new Error(error.message || 'Authentication failed. Please verify credentials.');
       }
 
       if (!data.session?.access_token) {
         throw new Error('Authentication succeeded but no access token was returned.');
-      }
-
-      // Check strict 2-user allowlist from authorized_users table if available
-      try {
-        const { data: authRecord } = await supabase
-          .from('authorized_users')
-          .select('email, role')
-          .eq('email', cleanEmail)
-          .maybeSingle();
-
-        if (authRecord && !authRecord.email) {
-          await supabase.auth.signOut();
-          throw new Error(`Access denied: Email '${cleanEmail}' is not on the authorized allowlist for this private instance.`);
-        }
-      } catch (allowlistErr: any) {
-        if (allowlistErr.message?.includes('Access denied')) {
-          throw allowlistErr;
-        }
-        // If table not yet queried or RLS hidden, server-side validation will enforce on API calls
       }
 
       setAuthToken(data.session.access_token);
@@ -161,7 +142,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: 1,
         email: cleanEmail,
         username: data.user.user_metadata?.username || cleanEmail.split('@')[0],
-        role: data.user.user_metadata?.role || 'trader',
       });
       return;
     }

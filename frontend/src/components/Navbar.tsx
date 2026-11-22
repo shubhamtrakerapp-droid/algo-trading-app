@@ -388,12 +388,9 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
           {user && (
             <div className="flex items-center space-x-2 pl-1 border-l border-border/60">
               {/* User Identity Pill */}
-              <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-slate-300">
+              <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="font-medium truncate max-w-[120px]">{user.username || user.email.split('@')[0]}</span>
-                <span className="text-[10px] uppercase font-mono tracking-wider px-1 py-0.2 bg-emerald-950/70 border border-emerald-800/60 text-emerald-400 rounded">
-                  {user.role}
-                </span>
+                <span className="font-medium truncate max-w-[140px]">{user.username || user.email.split('@')[0]}</span>
               </div>
 
               {/* Slot Management Button */}
@@ -479,21 +476,17 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
                       <div className="min-w-0 pr-2">
                         <div className="text-xs font-semibold text-slate-200 truncate">{u.email}</div>
                         <div className="text-[10px] text-slate-500 flex items-center gap-2">
-                          <span className="uppercase text-emerald-400 font-mono">{u.role}</span>
-                          <span>•</span>
                           <span>{u.is_active ? 'Active' : 'Disabled'}</span>
                         </div>
                       </div>
-                      {u.role !== 'owner' && (
-                        <button
-                          onClick={() => handleRemoveUserSlot(u.email)}
-                          disabled={isSlotLoading}
-                          title="Remove user authorization"
-                          className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleRemoveUserSlot(u.email)}
+                        disabled={isSlotLoading}
+                        title="Remove user authorization"
+                        className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -508,7 +501,7 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
             {slotsData && slotsData.slots_available > 0 ? (
               <form onSubmit={handleAddUserSlot} className="pt-3 border-t border-slate-800 space-y-3">
                 <div className="text-xs font-semibold text-slate-300">
-                  Authorize User 2 ({slotsData.slots_available} slot available)
+                  Authorize User ({slotsData.slots_available} slot available)
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -519,14 +512,6 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
                     required
                     className="flex-1 px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
                   />
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value)}
-                    className="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200"
-                  >
-                    <option value="trader">Trader</option>
-                    <option value="admin">Admin</option>
-                  </select>
                   <button
                     type="submit"
                     disabled={isSlotLoading}
