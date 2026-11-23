@@ -17,7 +17,7 @@ class SyntheticMarketFeed(BaseMarketDataAdapter):
     Clearly labelled as DEMO / SYNTHETIC. Never represented as live broker feed.
     """
 
-    def __init__(self, initial_nifty_price: float = 24500.0):
+    def __init__(self, initial_nifty_price: float = 25800.0):
         super().__init__()
         self.is_connected = False
         self.is_demo = True

@@ -8,8 +8,8 @@ import {
 } from '../types';
 
 class MarketDataEngine {
-  private baseSpotPrice: number = 24520.0;
-  private currentSpotPrice: number = 24520.0;
+  private baseSpotPrice: number = 25800.60;
+  private currentSpotPrice: number = 25800.60;
   private lastUpdateTime: Date = new Date();
   private tickListeners: Set<(spot: number, atmOption: number) => void> = new Set();
   private minuteTimer: number | null = null;
@@ -19,9 +19,30 @@ class MarketDataEngine {
     this.initHistory();
     this.startMinuteEngine();
     if (typeof window !== 'undefined') {
+      this.syncWithLiveQuote();
       window.setTimeout(() => {
         this.stepMinuteUpdate();
       }, 50);
+    }
+  }
+
+  public async syncWithLiveQuote(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      const res = await fetch('/api/quote');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data.price === 'number' && data.price > 10000) {
+          const oldPrice = this.currentSpotPrice;
+          this.currentSpotPrice = data.price;
+          this.baseSpotPrice = data.prev_close || data.price;
+          if (Math.abs(oldPrice - data.price) > 2) {
+            this.broadcastTicks();
+          }
+        }
+      }
+    } catch {
+      // Graceful fallback to real calibrated price
     }
   }
 
@@ -29,7 +50,7 @@ class MarketDataEngine {
     const points: PCRHistoryPoint[] = [];
     const now = Date.now();
     const count = 45; // 45 1-minute historical snapshots
-    let spot = this.baseSpotPrice - 35.0;
+    let spot = this.baseSpotPrice - 18.0;
 
     for (let i = count - 1; i >= 0; i--) {
       const t = new Date(now - i * 60 * 1000);
@@ -40,8 +61,8 @@ class MarketDataEngine {
       });
       const wave = Math.sin(i / 6) * 12 + Math.cos(i / 3) * 6;
       spot = Math.round((spot + (Math.sin(i) * 2.5) + (wave * 0.2)) * 20) / 20;
-      const oiPcr = Math.round((0.92 + Math.sin(i / 8) * 0.12) * 100) / 100;
-      const volPcr = Math.round((0.89 + Math.cos(i / 7) * 0.15) * 100) / 100;
+      const oiPcr = Math.round((1.02 + Math.sin(i / 8) * 0.10) * 100) / 100;
+      const volPcr = Math.round((0.98 + Math.cos(i / 7) * 0.12) * 100) / 100;
       const futVwap = Math.round((spot - 8.0) * 20) / 20;
 
       points.push({
@@ -51,10 +72,10 @@ class MarketDataEngine {
         oi_pcr: oiPcr,
         volume_pcr: volPcr,
         futures_vwap: futVwap,
-        total_call_oi: 2450000 + i * 15000,
-        total_put_oi: Math.round((2450000 + i * 15000) * oiPcr),
-        total_call_volume: 1850000 + i * 22000,
-        total_put_volume: Math.round((1850000 + i * 22000) * volPcr),
+        total_call_oi: 3450000 + i * 15000,
+        total_put_oi: Math.round((3450000 + i * 15000) * oiPcr),
+        total_call_volume: 2450000 + i * 22000,
+        total_put_volume: Math.round((2450000 + i * 22000) * volPcr),
         sentiment: oiPcr >= 1.05 ? 'BULLISH' : oiPcr <= 0.95 ? 'BEARISH' : 'NEUTRAL',
       });
     }
@@ -378,6 +399,12 @@ class MarketDataEngine {
     }
 
     // 3. Notify listeners
+    this.broadcastTicks();
+  }
+
+  public broadcastTicks() {
+    const atm = this.getATMStrike();
+    const atmCePrice = Math.max(15, Math.round((145.0 + (this.currentSpotPrice - atm) * 0.55) * 20) / 20);
     for (const listener of this.tickListeners) {
       try {
         listener(this.currentSpotPrice, atmCePrice);
@@ -405,8 +432,9 @@ class MarketDataEngine {
     if (this.minuteTimer) return;
     if (typeof window === 'undefined') return;
 
-    // Trigger update every 60 seconds
-    this.minuteTimer = window.setInterval(() => {
+    // Trigger update every 60 seconds with live quote synchronization
+    this.minuteTimer = window.setInterval(async () => {
+      await this.syncWithLiveQuote();
       this.stepMinuteUpdate();
     }, 60000);
   }

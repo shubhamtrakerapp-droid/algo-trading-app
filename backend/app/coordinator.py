@@ -38,7 +38,7 @@ class SystemCoordinator:
 
     def __init__(self):
         self.kotak_adapter = KotakNeoAdapter()
-        self.synthetic_adapter = SyntheticMarketFeed(initial_nifty_price=24500.0)
+        self.synthetic_adapter = SyntheticMarketFeed(initial_nifty_price=25800.0)
 
         # Decide primary active adapter based on available credentials
         if settings.has_kotak_credentials:
@@ -90,7 +90,7 @@ class SystemCoordinator:
             self.option_selector.set_position_open_state(True)
 
         # 2. Select initial ATM CE contract
-        initial_spot = 24500.0
+        initial_spot = 25800.0
         self.current_contract = self.option_selector.select_atm_ce(initial_spot)
 
         # 3. Setup callbacks on adapters
@@ -1011,7 +1011,7 @@ class SystemCoordinator:
 
     def get_current_snapshot(self) -> Dict[str, Any]:
         """Return full market and trading state snapshot for clients."""
-        spot = self.latest_nifty_tick.last_price if self.latest_nifty_tick else 24500.0
+        spot = self.latest_nifty_tick.last_price if self.latest_nifty_tick else 25800.0
         opt_prem = self.latest_option_tick.last_price if self.latest_option_tick else 145.0
         contract = self.current_contract or {}
         pos = self.paper_broker.active_position

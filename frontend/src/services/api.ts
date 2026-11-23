@@ -64,7 +64,7 @@ export const getAuthToken = () => currentAuthToken;
 function generateFallbackCandles(count: number = 100): Candle[] {
   const candles: Candle[] = [];
   const now = Date.now();
-  const basePrice = 24500.0;
+  const basePrice = marketDataEngine.getSpotPrice();
 
   for (let i = count - 1; i >= 0; i--) {
     const timeMs = now - i * 60 * 1000;
@@ -282,23 +282,25 @@ export const api = {
   },
 
   getChartInstruments: async (_query: string = ''): Promise<{ status: string; instruments: InstrumentItem[] }> => {
+    const spot = marketDataEngine.getSpotPrice();
+    const atm = marketDataEngine.getATMStrike();
     const instruments: InstrumentItem[] = [
       {
         symbol: 'NIFTY 50',
         name: 'NIFTY 50 Index',
         type: 'INDEX',
         strike: null,
-        current_price: 24500.0,
+        current_price: spot,
         token: 'NIFTY_50',
         exchange: 'NSE',
       },
       {
         symbol: 'NIFTY ATM CE',
-        name: 'NIFTY 24500 Weekly CE',
+        name: `NIFTY ${atm} Weekly CE`,
         type: 'OPTIDX',
-        strike: 24500,
+        strike: atm,
         current_price: 145.0,
-        token: 'OPT_24500_CE',
+        token: `OPT_${atm}_CE`,
         exchange: 'NFO',
       },
     ];
@@ -346,9 +348,10 @@ export const api = {
   },
 
   selectContract: async (strike?: number, expiry?: string): Promise<{ status: string; contract: any }> => {
+    const atm = marketDataEngine.getATMStrike();
     return {
       status: 'SUCCESS',
-      contract: { strike: strike || 24500, expiry: expiry || 'WEEKLY' },
+      contract: { strike: strike || atm, expiry: expiry || 'WEEKLY' },
     };
   },
 
@@ -460,7 +463,7 @@ export const api = {
             condition_4: true,
             signal: sig.signal_type || 'NONE',
             is_buy: sig.signal_type === 'BUY',
-            underlying_price: sig.underlying_price || 24500.0,
+            underlying_price: sig.underlying_price || marketDataEngine.getSpotPrice(),
             timestamp: sig.timestamp || new Date().toISOString(),
           };
         }
@@ -474,7 +477,7 @@ export const api = {
       condition_4: false,
       signal: 'NONE',
       is_buy: false,
-      underlying_price: 24500.0,
+      underlying_price: marketDataEngine.getSpotPrice(),
       timestamp: new Date().toISOString(),
     };
   },

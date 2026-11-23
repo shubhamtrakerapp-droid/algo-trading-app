@@ -29,13 +29,13 @@ const defaultMarketStatus: MarketStatus = {
   feed_status: 'ONLINE',
   is_stale: false,
   last_tick_time: null,
-  nifty_price: 24500.0,
-  option_symbol: 'NIFTY ATM CE',
+  nifty_price: 25800.60,
+  option_symbol: 'NIFTY 25800 CE',
   option_premium: 145.0,
-  atm_strike: 24500.0,
+  atm_strike: 25800.0,
   expiry: 'WEEKLY',
   lot_size: 65,
-  instrument_token: 'OPT_24500_CE',
+  instrument_token: 'OPT_25800_CE',
   timestamp: new Date().toISOString(),
 };
 

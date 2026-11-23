@@ -242,10 +242,10 @@ export const OptionChain: React.FC<OptionChainProps> = ({ onContractSelected }) 
             <p className="text-xs text-gray-400 font-mono mt-0.5">
               Underlying Spot:{' '}
               <span className="text-white font-bold transition-colors">
-                {chain?.spot_price ? chain.spot_price.toFixed(2) : '24,500.00'}
+                {chain?.spot_price ? chain.spot_price.toFixed(2) : '25,800.60'}
               </span>{' '}
               | Dynamic ATM:{' '}
-              <span className="text-emerald-400 font-bold">{chain?.atm_strike || 24500}</span>
+              <span className="text-emerald-400 font-bold">{chain?.atm_strike || 25800}</span>
               <span className="ml-2 text-gray-500">({dataAge})</span>
             </p>
           </div>

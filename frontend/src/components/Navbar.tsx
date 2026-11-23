@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
   };
 
   // Price flash indicators
-  const [spotPrice, setSpotPrice] = useState<number>(marketStatus?.nifty_price || 24500.0);
+  const [spotPrice, setSpotPrice] = useState<number>(marketStatus?.nifty_price || 25800.60);
   const [spotFlash, setSpotFlash] = useState<'up' | 'down' | null>(null);
   const [optionPrem, setOptionPrem] = useState<number>(marketStatus?.option_premium || 145.0);
   const [optFlash, setOptFlash] = useState<'up' | 'down' | null>(null);
@@ -352,7 +352,7 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
                   : 'text-white'
               }`}
             >
-              {spotPrice ? spotPrice.toFixed(2) : '24,500.00'}
+              {spotPrice ? spotPrice.toFixed(2) : '25,800.60'}
             </span>
           </div>
 
@@ -373,7 +373,7 @@ export const Navbar: React.FC<NavbarProps> = ({ marketStatus, onToggleMobileSide
 
           <div className="hidden lg:flex items-center space-x-2 text-xs">
             <span className="text-gray-400">ATM:</span>
-            <span className="text-gray-200 font-semibold">{marketStatus?.atm_strike || 24500}</span>
+            <span className="text-gray-200 font-semibold">{marketStatus?.atm_strike || 25800}</span>
             <span className="text-gray-400">LOT:</span>
             <span className="text-gray-200 font-semibold">{marketStatus?.lot_size || 65}</span>
           </div>

@@ -30,7 +30,7 @@ async def get_market_status():
     Return comprehensive market feed status, separate WebSocket connection,
     market data freshness, market open/closed state, and active contract.
     """
-    nifty_price = 24500.0
+    nifty_price = 25800.0
     if coordinator.latest_nifty_tick:
         nifty_price = coordinator.latest_nifty_tick.last_price
 
@@ -70,7 +70,7 @@ async def get_market_status():
         "nifty_price": nifty_price,
         "option_symbol": contract.get("symbol", "NIFTY ATM CE"),
         "option_premium": opt_premium,
-        "atm_strike": contract.get("strike", 24500.0),
+        "atm_strike": contract.get("strike", 25800.0),
         "expiry": contract.get("expiry", "WEEKLY"),
         "lot_size": contract.get("lot_size", 65),
         "instrument_token": contract.get("instrument_token", ""),
@@ -211,7 +211,7 @@ async def get_chart_backtest_runs():
 @router.get("/option-chain")
 async def get_option_chain():
     """Return option chain strikes around current ATM strike."""
-    nifty_price = 24500.0
+    nifty_price = 25800.0
     if coordinator.latest_nifty_tick:
         nifty_price = coordinator.latest_nifty_tick.last_price
 
@@ -299,7 +299,7 @@ async def select_contract(payload: Dict[str, Any]):
     """Manually select option contract / expiry override."""
     strike = payload.get("strike")
     expiry = payload.get("expiry")
-    spot_price = coordinator.latest_nifty_tick.last_price if coordinator.latest_nifty_tick else 24500.0
+    spot_price = coordinator.latest_nifty_tick.last_price if coordinator.latest_nifty_tick else 25800.0
 
     if coordinator.paper_broker.active_position:
         raise HTTPException(

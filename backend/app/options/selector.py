@@ -49,7 +49,7 @@ class OptionContractSelector:
         e.g., 24524.80 -> 24500.0, 24526.00 -> 24550.0
         """
         if spot_price <= 0:
-            return 24500.0
+            return 25800.0
         return round(spot_price / self.strike_interval) * self.strike_interval
 
     def generate_option_symbol(self, strike: float, expiry_str: str, option_type: str = "CE") -> str:

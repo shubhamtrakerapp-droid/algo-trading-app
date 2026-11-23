@@ -98,7 +98,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           title="NIFTY 50 SPOT"
-          value={marketStatus?.nifty_price ? marketStatus.nifty_price.toFixed(2) : '24,500.00'}
+          value={marketStatus?.nifty_price ? marketStatus.nifty_price.toFixed(2) : '25,800.60'}
           subValue="NSE Index"
           icon={<Activity className="w-4 h-4" />}
           trend="up"
@@ -107,7 +107,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <StatCard
           title={marketStatus?.option_symbol || 'ATM CE PREMIUM'}
           value={marketStatus?.option_premium ? `₹${marketStatus.option_premium.toFixed(2)}` : '₹145.00'}
-          subValue={`Strike: ${marketStatus?.atm_strike || 24500}`}
+          subValue={`Strike: ${marketStatus?.atm_strike || 25800}`}
           icon={<Layers className="w-4 h-4" />}
           trend="neutral"
         />

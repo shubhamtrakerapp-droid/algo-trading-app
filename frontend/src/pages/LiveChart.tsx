@@ -375,7 +375,7 @@ export const LiveChart: React.FC<LiveChartProps> = ({
 
   // Derived contracts
   const atmCeSymbol = marketStatus?.option_symbol || 'NIFTY ATM CE';
-  const atmStrike = marketStatus?.atm_strike || 24500;
+  const atmStrike = marketStatus?.atm_strike || 25800;
   const atmPeSymbol = `NIFTY ${atmStrike} PE`;
 
   // Latest candle LTP
@@ -675,7 +675,7 @@ export const LiveChart: React.FC<LiveChartProps> = ({
             </div>
             <input
               type="text"
-              placeholder="Search strike, CE, PE (e.g. 24500, PE, CE)..."
+              placeholder="Search strike, CE, PE (e.g. 25800, PE, CE)..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
