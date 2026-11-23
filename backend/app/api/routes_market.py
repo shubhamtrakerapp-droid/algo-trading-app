@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 logger = logging.getLogger("nextrade.market_routes")
 
 from backend.app.coordinator import coordinator
+from backend.app.adapters.synthetic_feed import SyntheticMarketFeed
 from backend.app.database import AsyncSessionLocal
 from backend.app.models import BacktestRun
 from backend.app.market.history_service import HistoricalMarketDataService
