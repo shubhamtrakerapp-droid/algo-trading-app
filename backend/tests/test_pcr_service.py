@@ -126,78 +126,193 @@ MOCK_FUTURES_QUOTE = {
 
 
 @pytest.mark.asyncio
-async def test_pcr_service_analyze_and_db_persistence(monkeypatch):
+async def test_pcr_service_analyze_and_db_persistence():
     await init_db()
+    PCRService._cache.clear()
 
     async def mock_fetch(underlying, expiry=None, force_refresh=False):
         return MOCK_RAW_CHAIN, MOCK_FUTURES_QUOTE, "FRESH", None
 
-    monkeypatch.setattr(PCRService, "fetch_raw_chain", mock_fetch)
+    orig_fetch = PCRService.fetch_raw_chain
+    PCRService.fetch_raw_chain = mock_fetch
+    try:
+        res = await PCRService.analyze_pcr(underlying="NIFTY", strike_range=5)
+        assert res["status"] == "SUCCESS"
+        assert res["underlying"] == "NIFTY"
+        assert res["range_info"]["strike_range"] == 5
+        assert len(res["strikes"]) == 11  # 5 below + ATM + 5 above = 11
 
-    res = await PCRService.analyze_pcr(underlying="NIFTY", strike_range=5)
-    assert res["status"] == "SUCCESS"
-    assert res["underlying"] == "NIFTY"
-    assert res["range_info"]["strike_range"] == 5
-    assert len(res["strikes"]) == 11  # 5 below + ATM + 5 above = 11
+        # Check cards
+        cards = res["cards"]
+        assert "oi_pcr" in cards
+        assert "volume_pcr" in cards
+        assert "call_oi" in cards
+        assert "put_oi" in cards
+        assert "price_vwap" in cards
+        assert "market_bias" in cards
 
-    # Check cards
-    cards = res["cards"]
-    assert "oi_pcr" in cards
-    assert "volume_pcr" in cards
-    assert "call_oi" in cards
-    assert "put_oi" in cards
-    assert "price_vwap" in cards
-    assert "market_bias" in cards
+        # Check VWAP label requirement
+        assert cards["price_vwap"]["index_vwap"] is None
+        assert cards["price_vwap"]["index_vwap_label"] == "Index VWAP unavailable"
+        assert cards["price_vwap"]["futures_vwap_label"] == "NIFTY FUTURES VWAP"
 
-    # Check VWAP label requirement
-    assert cards["price_vwap"]["index_vwap"] is None
-    assert cards["price_vwap"]["index_vwap_label"] == "Index VWAP unavailable"
-    assert cards["price_vwap"]["futures_vwap_label"] == "NIFTY FUTURES VWAP"
-
-    # Check DB snapshot persistence
-    hist = await PCRService.get_history(underlying="NIFTY", strike_range=5)
-    assert len(hist) >= 1
-    point = hist[-1]
-    assert "oi_pcr" in point
-    assert "volume_pcr" in point
-    assert "spot_price" in point
+        # Check DB snapshot persistence
+        hist = await PCRService.get_history(underlying="NIFTY", strike_range=5)
+        assert len(hist) >= 1
+        point = hist[-1]
+        assert "oi_pcr" in point
+        assert "volume_pcr" in point
+        assert "spot_price" in point
+    finally:
+        PCRService.fetch_raw_chain = orig_fetch
+        PCRService._cache.clear()
 
 
 @pytest.mark.asyncio
-async def test_pcr_api_endpoints(monkeypatch):
+async def test_pcr_api_endpoints():
     from starlette.testclient import TestClient
     from backend.app.main import app
+
+    PCRService._cache.clear()
 
     async def mock_fetch(underlying, expiry=None, force_refresh=False):
         return MOCK_RAW_CHAIN, MOCK_FUTURES_QUOTE, "FRESH", None
 
-    monkeypatch.setattr(PCRService, "fetch_raw_chain", mock_fetch)
+    orig_fetch = PCRService.fetch_raw_chain
+    PCRService.fetch_raw_chain = mock_fetch
 
-    with TestClient(app) as client:
-        # Test GET /api/market-data/pcr
-        r1 = client.get("/api/market-data/pcr?underlying=NIFTY&strike_range=10")
-        assert r1.status_code == 200
-        d1 = r1.json()
-        assert d1["status"] == "SUCCESS"
-        assert d1["range_info"]["strike_range"] == 10
-        assert len(d1["strikes"]) == 21  # 10 below + ATM + 10 above = 21
+    try:
+        with TestClient(app) as client:
+            # Test GET /api/market-data/pcr
+            r1 = client.get("/api/market-data/pcr?underlying=NIFTY&strike_range=10")
+            assert r1.status_code == 200
+            d1 = r1.json()
+            assert d1["status"] == "SUCCESS"
+            assert d1["range_info"]["strike_range"] == 10
+            assert len(d1["strikes"]) == 21  # 10 below + ATM + 10 above = 21
 
-        # Test GET /api/market-data/pcr/expiries
-        r2 = client.get("/api/market-data/pcr/expiries?underlying=NIFTY")
-        assert r2.status_code == 200
-        d2 = r2.json()
-        assert d2["status"] == "SUCCESS"
-        assert len(d2["expiries"]) > 0
+            # Test GET /api/market-data/pcr/expiries
+            r2 = client.get("/api/market-data/pcr/expiries?underlying=NIFTY")
+            assert r2.status_code == 200
+            d2 = r2.json()
+            assert d2["status"] == "SUCCESS"
+            assert len(d2["expiries"]) > 0
 
-        # Test GET /api/market-data/pcr/history
-        r3 = client.get("/api/market-data/pcr/history?underlying=NIFTY&strike_range=10")
-        assert r3.status_code == 200
-        d3 = r3.json()
-        assert d3["status"] == "SUCCESS"
+            # Test GET /api/market-data/pcr/history
+            r3 = client.get("/api/market-data/pcr/history?underlying=NIFTY&strike_range=10")
+            assert r3.status_code == 200
+            d3 = r3.json()
+            assert d3["status"] == "SUCCESS"
 
-        # Test GET /api/market-data/pcr/dates
-        r4 = client.get("/api/market-data/pcr/dates?underlying=NIFTY")
-        assert r4.status_code == 200
-        d4 = r4.json()
-        assert d4["status"] == "SUCCESS"
-        assert len(d4["dates"]) > 0
+            # Test GET /api/market-data/pcr/dates
+            r4 = client.get("/api/market-data/pcr/dates?underlying=NIFTY")
+            assert r4.status_code == 200
+            d4 = r4.json()
+            assert d4["status"] == "SUCCESS"
+            assert len(d4["dates"]) > 0
+    finally:
+        PCRService.fetch_raw_chain = orig_fetch
+        PCRService._cache.clear()
+
+
+@pytest.mark.asyncio
+async def test_all_strike_ranges_and_mathematical_precision():
+    """
+    Test and mathematically verify all strike ranges:
+    ±5, ±10, ±15, ±20, ±25, and All (0).
+    Verifies strike counts, OI PCR formula, Vol PCR formula, strike PCR,
+    moneyness classifications, Support 1, and Resistance 1.
+    """
+    PCRService._cache.clear()
+
+    async def mock_fetch(underlying, expiry=None, force_refresh=False):
+        return MOCK_RAW_CHAIN, MOCK_FUTURES_QUOTE, "FRESH", None
+
+    orig_fetch = PCRService.fetch_raw_chain
+    PCRService.fetch_raw_chain = mock_fetch
+
+    test_ranges = [
+        (5, 11),
+        (10, 21),
+        (15, 31),
+        (20, 41),
+        (25, 51),
+        (0, len(MOCK_RAW_CHAIN["call"]))
+    ]
+
+    try:
+        for s_range, expected_count in test_ranges:
+            res = await PCRService.analyze_pcr(underlying="NIFTY", strike_range=s_range)
+            assert res["status"] == "SUCCESS"
+            assert len(res["strikes"]) == expected_count, f"Range {s_range} expected {expected_count} strikes, got {len(res['strikes'])}"
+            
+            # 1. Verify Aggregate OI PCR Formula
+            tot_put_oi = res["cards"]["oi_pcr"]["total_put_oi"]
+            tot_call_oi = res["cards"]["oi_pcr"]["total_call_oi"]
+            expected_oi_pcr = round(tot_put_oi / tot_call_oi, 2)
+            assert res["cards"]["oi_pcr"]["value"] == expected_oi_pcr
+            assert res["range_info"]["range_oi_pcr"] == expected_oi_pcr
+
+            # 2. Verify Aggregate Volume PCR Formula
+            tot_put_vol = res["cards"]["volume_pcr"]["total_put_volume"]
+            tot_call_vol = res["cards"]["volume_pcr"]["total_call_volume"]
+            expected_vol_pcr = round(tot_put_vol / tot_call_vol, 2)
+            assert res["cards"]["volume_pcr"]["value"] == expected_vol_pcr
+            assert res["range_info"]["range_volume_pcr"] == expected_vol_pcr
+
+            # 3. Verify Range vs All-Strikes metrics
+            assert "all_oi_pcr" in res["range_info"]
+            assert "all_volume_pcr" in res["range_info"]
+            assert res["range_info"]["all_call_oi"] > 0
+            assert res["range_info"]["all_put_oi"] > 0
+
+            # 4. Verify Individual Strike Ratios & Moneyness
+            spot = res["cards"]["price_vwap"]["spot_price"]
+            for row in res["strikes"]:
+                s = row["strike"]
+                # Strike OI PCR
+                if row["ce_oi"] > 0:
+                    assert row["strike_oi_pcr"] == round(row["pe_oi"] / row["ce_oi"], 2)
+                # Moneyness logic
+                if s < spot:
+                    assert row["ce_moneyness"] in ["ITM", "ATM"]
+                elif s > spot:
+                    assert row["pe_moneyness"] in ["ITM", "ATM"]
+
+            # 5. Verify Support 1 and Resistance 1 Zones
+            highest_put_strike = max(res["strikes"], key=lambda r: r["pe_oi"])["strike"]
+            highest_call_strike = max(res["strikes"], key=lambda r: r["ce_oi"])["strike"]
+            assert res["levels"]["support_1"] == highest_put_strike
+            assert res["levels"]["resistance_1"] == highest_call_strike
+    finally:
+        PCRService.fetch_raw_chain = orig_fetch
+        PCRService._cache.clear()
+
+
+@pytest.mark.asyncio
+async def test_demo_synthetic_fallback_without_client():
+    """
+    Test that when Kotak Neo client is not configured, PCRService generates
+    a valid synthetic chain with 61 strikes (±30 around ATM) without crashing.
+    """
+    from backend.app.coordinator import coordinator
+    PCRService._cache.clear()
+    orig_client = coordinator.kotak_adapter.client if coordinator.kotak_adapter else None
+    if coordinator.kotak_adapter:
+        coordinator.kotak_adapter.client = None
+
+    try:
+        res = await PCRService.analyze_pcr(underlying="NIFTY", strike_range=10, force_refresh=True)
+        assert res["status"] == "SUCCESS"
+        assert res["data_status"] == "DEMO_SYNTHETIC"
+        assert len(res["strikes"]) == 21
+        assert res["range_info"]["selected_levels"] == 21
+        assert res["cards"]["oi_pcr"]["value"] > 0
+        assert res["cards"]["volume_pcr"]["value"] > 0
+        assert res["levels"]["support_1"] > 0
+        assert res["levels"]["resistance_1"] > 0
+    finally:
+        if coordinator.kotak_adapter:
+            coordinator.kotak_adapter.client = orig_client
+        PCRService._cache.clear()
+
