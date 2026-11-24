@@ -462,9 +462,15 @@ export const PCRAnalysis: React.FC = () => {
               <div className="px-3.5 py-1.5 rounded-xl bg-background/90 border border-border/80 text-gray-300 flex items-center space-x-2">
                 <span className="text-blue-400 font-bold">ATM: {data.range_info.atm_strike.toLocaleString()}</span>
                 <span className="text-gray-500">&bull;</span>
-                <span>Range: {selectedRange === 0 ? 'ALL' : `±${selectedRange}`}</span>
+                <span>Range: {selectedRange === 0 ? 'ALL STRIKES' : `±${selectedRange}`}</span>
                 <span className="text-gray-500">&bull;</span>
-                <span className="text-emerald-400 font-semibold">{data.range_info.selected_levels} strikes</span>
+                <span className="text-emerald-400 font-semibold">{data.range_info.selected_levels} strikes active</span>
+                {data.range_info.all_oi_pcr !== undefined && selectedRange !== 0 && (
+                  <>
+                    <span className="text-gray-500">&bull;</span>
+                    <span className="text-gray-400">Total Market PCR: <b className="text-white">{data.range_info.all_oi_pcr.toFixed(2)}</b></span>
+                  </>
+                )}
               </div>
             )}
 
@@ -481,7 +487,7 @@ export const PCRAnalysis: React.FC = () => {
       {/* 3. Main PCR Summary Cards (6 Cards) */}
       <div className="p-4 sm:p-6 py-2">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
-          {/* Card 1: OI PCR */}
+          {/* Card 1: OI PCR (Shows Range PCR & Total Market PCR) */}
           {(() => {
             const card = data?.cards.oi_pcr;
             const theme = getSentimentColor(card?.sentiment_label || '');
@@ -489,19 +495,31 @@ export const PCRAnalysis: React.FC = () => {
               <div className={`p-4 rounded-2xl border ${theme.border} ${theme.bg} shadow-md backdrop-blur flex flex-col justify-between transition-all hover:border-gray-500/50`}>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-mono uppercase text-gray-400">OI PCR (Put/Call)</span>
+                    <span className="text-[11px] font-mono uppercase text-gray-400">
+                      {selectedRange === 0 ? 'ALL-STRIKES PCR' : `RANGE PCR (±${selectedRange})`}
+                    </span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${theme.badge}`}>
                       {card?.sentiment_label || 'NEUTRAL'}
                     </span>
                   </div>
-                  <div className="flex items-baseline space-x-2 mt-1">
-                    <span className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${theme.text}`}>
-                      {card?.value !== null && card?.value !== undefined ? card.value.toFixed(2) : 'N/A'}
-                    </span>
-                    {card?.delta !== null && card?.delta !== undefined && (
-                      <span className={`text-xs font-mono font-semibold flex items-center ${card.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {card.delta >= 0 ? '+' : ''}{card.delta.toFixed(2)}
+                  <div className="flex items-baseline justify-between mt-1">
+                    <div className="flex items-baseline space-x-2">
+                      <span className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${theme.text}`}>
+                        {card?.value !== null && card?.value !== undefined ? card.value.toFixed(2) : 'N/A'}
                       </span>
+                      {card?.delta !== null && card?.delta !== undefined && (
+                        <span className={`text-xs font-mono font-semibold flex items-center ${card.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {card.delta >= 0 ? '+' : ''}{card.delta.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    {data?.range_info?.all_oi_pcr !== undefined && selectedRange !== 0 && (
+                      <div className="text-right">
+                        <span className="text-[10px] font-mono text-gray-400 block">TOTAL ALL-PCR</span>
+                        <span className="text-sm font-mono font-bold text-gray-200">
+                          {data.range_info.all_oi_pcr.toFixed(2)}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -528,19 +546,31 @@ export const PCRAnalysis: React.FC = () => {
               <div className={`p-4 rounded-2xl border ${theme.border} ${theme.bg} shadow-md backdrop-blur flex flex-col justify-between transition-all hover:border-gray-500/50`}>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-mono uppercase text-gray-400">Volume PCR</span>
+                    <span className="text-[11px] font-mono uppercase text-gray-400">
+                      {selectedRange === 0 ? 'ALL VOLUME PCR' : `RANGE VOL PCR (±${selectedRange})`}
+                    </span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${theme.badge}`}>
                       {card?.sentiment_label || 'NEUTRAL'}
                     </span>
                   </div>
-                  <div className="flex items-baseline space-x-2 mt-1">
-                    <span className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${theme.text}`}>
-                      {card?.value !== null && card?.value !== undefined ? card.value.toFixed(2) : 'N/A'}
-                    </span>
-                    {card?.delta !== null && card?.delta !== undefined && (
-                      <span className={`text-xs font-mono font-semibold flex items-center ${card.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {card.delta >= 0 ? '+' : ''}{card.delta.toFixed(2)}
+                  <div className="flex items-baseline justify-between mt-1">
+                    <div className="flex items-baseline space-x-2">
+                      <span className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${theme.text}`}>
+                        {card?.value !== null && card?.value !== undefined ? card.value.toFixed(2) : 'N/A'}
                       </span>
+                      {card?.delta !== null && card?.delta !== undefined && (
+                        <span className={`text-xs font-mono font-semibold flex items-center ${card.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {card.delta >= 0 ? '+' : ''}{card.delta.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    {data?.range_info?.all_volume_pcr !== undefined && selectedRange !== 0 && (
+                      <div className="text-right">
+                        <span className="text-[10px] font-mono text-gray-400 block">TOTAL VOL PCR</span>
+                        <span className="text-sm font-mono font-bold text-gray-200">
+                          {data.range_info.all_volume_pcr.toFixed(2)}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>

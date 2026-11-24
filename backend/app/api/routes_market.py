@@ -266,7 +266,7 @@ async def get_option_chain():
                 "strikes": strikes
             }
 
-    strikes = coordinator.option_selector.get_option_chain_strikes(nifty_price, count=12)
+    strikes = coordinator.option_selector.get_option_chain_strikes(nifty_price, count=20)
     return {
         "underlying": "NIFTY",
         "spot_price": nifty_price,

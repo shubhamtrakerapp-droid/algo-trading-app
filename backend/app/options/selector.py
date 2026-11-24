@@ -192,7 +192,7 @@ class OptionContractSelector:
             return self.select_atm_pe(spot_price, expiry, manual_token, manual_strike)
         return self.select_atm_ce(spot_price, expiry, manual_token, manual_strike)
 
-    def get_option_chain_strikes(self, spot_price: float, count: int = 10) -> List[Dict[str, Any]]:
+    def get_option_chain_strikes(self, spot_price: float, count: int = 20) -> List[Dict[str, Any]]:
         """
         Generate a list of strike rows centered around ATM for the Option Chain view.
         """

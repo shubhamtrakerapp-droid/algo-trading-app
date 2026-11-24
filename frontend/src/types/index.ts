@@ -954,6 +954,12 @@ export interface PCRResponse {
     strike_range: number;
     requested_levels: number;
     selected_levels: number;
+    range_oi_pcr?: number;
+    all_oi_pcr?: number;
+    range_volume_pcr?: number;
+    all_volume_pcr?: number;
+    all_call_oi?: number;
+    all_put_oi?: number;
   };
   cards: {
     oi_pcr: PCRSummaryCard;

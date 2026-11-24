@@ -95,11 +95,12 @@ class MarketDataEngine {
 
   /**
    * Generates live updated Option Chain strikes centered around current spot price.
+   * By default generates up to ±30 strikes (61 strikes) to cover any selected Strike Range (±5, ±10, ±15, ±20, ±25, or All).
    */
-  public getLiveOptionChain(underlying = 'NIFTY', expiry = '28-NOV-2024'): OptionChainResponse {
+  public getLiveOptionChain(underlying = 'NIFTY', expiry = '28-NOV-2024', maxHalf: number = 30): OptionChainResponse {
     const spot = this.currentSpotPrice;
     const atm = this.getATMStrike();
-    const halfCount = 10;
+    const halfCount = Math.max(10, maxHalf);
     const strikes: OptionChainStrike[] = [];
 
     for (let i = -halfCount; i <= halfCount; i++) {
@@ -115,24 +116,24 @@ class MarketDataEngine {
 
       // Realistic Open Interest curve: heavier Calls at resistance, heavier Puts at support
       const strikeOffset = (strike - atm) / 50;
-      const ceOiBase = strike >= atm ? 120000 - Math.abs(strikeOffset - 3) * 12000 : 45000;
-      const peOiBase = strike <= atm ? 115000 - Math.abs(strikeOffset + 3) * 11000 : 42000;
+      const ceOiBase = strike >= atm ? 165000 - Math.abs(strikeOffset - 3) * 7500 : 55000;
+      const peOiBase = strike <= atm ? 172000 - Math.abs(strikeOffset + 3) * 7500 : 52000;
 
-      const ceOi = Math.max(15000, Math.floor(ceOiBase + (Math.sin(strike) * 12000)));
-      const peOi = Math.max(15000, Math.floor(peOiBase + (Math.cos(strike) * 11000)));
+      const ceOi = Math.max(15000, Math.floor(ceOiBase + (Math.sin(strike) * 15000)));
+      const peOi = Math.max(15000, Math.floor(peOiBase + (Math.cos(strike) * 14000)));
 
-      const ceVol = Math.floor(ceOi * 1.8 + Math.abs(Math.sin(strike) * 50000));
-      const peVol = Math.floor(peOi * 1.7 + Math.abs(Math.cos(strike) * 45000));
+      const ceVol = Math.floor(ceOi * 1.8 + Math.abs(Math.sin(strike) * 60000));
+      const peVol = Math.floor(peOi * 1.7 + Math.abs(Math.cos(strike) * 55000));
 
       strikes.push({
         strike,
         is_atm: isAtm,
-        ce_symbol: `NIFTY24NOV${strike}CE`,
+        ce_symbol: `NIFTY26NOV${strike}CE`,
         ce_token: `OPT_${strike}_CE`,
         ce_ltp: ceLtp,
         ce_oi: ceOi,
         ce_volume: ceVol,
-        pe_symbol: `NIFTY24NOV${strike}PE`,
+        pe_symbol: `NIFTY26NOV${strike}PE`,
         pe_token: `OPT_${strike}_PE`,
         pe_ltp: peLtp,
         pe_oi: peOi,
@@ -151,6 +152,8 @@ class MarketDataEngine {
 
   /**
    * Generates live Put-Call Ratio (PCR) analytics and strike distribution table.
+   * Accurately supports any Strike Range (±5, ±10, ±15, ±20, ±25, or 0 for All Available Strikes).
+   * Calculates both Range PCR (within selected strikes) and Total Market All-Strikes PCR.
    */
   public getLivePCRData(
     underlying = 'NIFTY',
@@ -159,14 +162,33 @@ class MarketDataEngine {
     bullishThreshold = 1.05,
     bearishThreshold = 0.95
   ): PCRResponse {
-    const chain = this.getLiveOptionChain(underlying, expiry);
+    // Generate up to 30 strikes on either side (61 total strikes) so any range has complete strikes
+    const maxHalf = strikeRange === 0 ? 30 : Math.max(strikeRange, 15);
+    const chain = this.getLiveOptionChain(underlying, expiry, maxHalf);
     const spot = chain.spot_price;
     const atm = chain.atm_strike;
 
+    // 1. Calculate All-Strikes Total Market OI and PCR across the entire chain
+    let allCallOi = 0;
+    let allPutOi = 0;
+    let allCallVol = 0;
+    let allPutVol = 0;
+    for (const s of chain.strikes) {
+      allCallOi += s.ce_oi;
+      allPutOi += s.pe_oi;
+      allCallVol += s.ce_volume;
+      allPutVol += s.pe_volume;
+    }
+    const allOiPcr = allCallOi > 0 ? Math.round((allPutOi / allCallOi) * 100) / 100 : 1.02;
+    const allVolPcr = allCallVol > 0 ? Math.round((allPutVol / allCallVol) * 100) / 100 : 0.98;
+
+    // 2. Filter strikes according to the requested strikeRange
     let strikes = chain.strikes;
+    const requestedLevels = strikeRange === 0 ? strikes.length : (2 * strikeRange + 1);
     if (strikeRange > 0) {
       strikes = strikes.filter((s) => Math.abs(s.strike - atm) <= strikeRange * 50);
     }
+    const selectedLevels = strikes.length;
 
     let totalCallOi = 0;
     let totalPutOi = 0;
@@ -241,8 +263,8 @@ class MarketDataEngine {
       };
     });
 
-    const oiPcrVal = totalCallOi > 0 ? Math.round((totalPutOi / totalCallOi) * 100) / 100 : 0.95;
-    const volPcrVal = totalCallVol > 0 ? Math.round((totalPutVol / totalCallVol) * 100) / 100 : 0.91;
+    const oiPcrVal = totalCallOi > 0 ? Math.round((totalPutOi / totalCallOi) * 100) / 100 : allOiPcr;
+    const volPcrVal = totalCallVol > 0 ? Math.round((totalPutVol / totalCallVol) * 100) / 100 : allVolPcr;
 
     const sentimentLabel = oiPcrVal >= bullishThreshold ? 'BULLISH' : oiPcrVal <= bearishThreshold ? 'BEARISH' : 'NEUTRAL';
     const volSentimentLabel = volPcrVal >= bullishThreshold ? 'BULLISH' : volPcrVal <= bearishThreshold ? 'BEARISH' : 'NEUTRAL';
@@ -264,8 +286,14 @@ class MarketDataEngine {
       range_info: {
         atm_strike: atm,
         strike_range: strikeRange,
-        requested_levels: strikes.length,
-        selected_levels: strikes.length,
+        requested_levels: requestedLevels,
+        selected_levels: selectedLevels,
+        range_oi_pcr: oiPcrVal,
+        all_oi_pcr: allOiPcr,
+        range_volume_pcr: volPcrVal,
+        all_volume_pcr: allVolPcr,
+        all_call_oi: allCallOi,
+        all_put_oi: allPutOi,
       },
       cards: {
         oi_pcr: {
@@ -347,12 +375,12 @@ class MarketDataEngine {
   /**
    * Generates live intraday 1-minute historical PCR snapshots for the chart view.
    */
-  public getLivePCRHistory(underlying = 'NIFTY', tradingDate?: string): PCRHistoryResponse {
+  public getLivePCRHistory(underlying = 'NIFTY', tradingDate?: string, strikeRange: number = 10): PCRHistoryResponse {
     return {
       status: 'SUCCESS',
       underlying,
       trading_date: tradingDate || new Date().toISOString().split('T')[0],
-      strike_range: 10,
+      strike_range: strikeRange,
       data_points_count: this.historyPoints.length,
       history: [...this.historyPoints],
     };

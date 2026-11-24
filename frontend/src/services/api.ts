@@ -1202,7 +1202,7 @@ export const api = {
     return marketDataEngine.getLivePCRData(
       params?.underlying || 'NIFTY',
       params?.expiry || '28-NOV-2024',
-      params?.strike_range || 10,
+      params?.strike_range ?? 10,
       params?.bullish_threshold || 1.05,
       params?.bearish_threshold || 0.95
     );
@@ -1233,7 +1233,7 @@ export const api = {
         return await fetchJson<PCRHistoryResponse>(`/market-data/pcr/history${qs ? `?${qs}` : ''}`);
       } catch {}
     }
-    return marketDataEngine.getLivePCRHistory(params?.underlying || 'NIFTY', params?.trading_date);
+    return marketDataEngine.getLivePCRHistory(params?.underlying || 'NIFTY', params?.trading_date, params?.strike_range ?? 10);
   },
 
   getPCRDates: async (underlying: string = 'NIFTY'): Promise<{ status: string; underlying: string; dates: string[] }> => {
